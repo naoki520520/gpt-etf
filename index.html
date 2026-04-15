@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETF 股息追蹤器</title>
+  <style>
+    :root {
+      --bg1: #06111f;
+      --bg2: #0b1f3a;
+      --glass: rgba(255, 255, 255, 0.10);
+      --glass-strong: rgba(255, 255, 255, 0.16);
+      --stroke: rgba(255, 255, 255, 0.18);
+      --text: #eaf2ff;
+      --muted: rgba(234, 242, 255, 0.72);
+      --accent1: #7c3aed;
+      --accent2: #22d3ee;
+      --accent3: #f472b6;
+      --accent4: #60a5fa;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.40), transparent 28%),
+        radial-gradient(circle at top right, rgba(34, 211, 238, 0.28), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(244, 114, 182, 0.22), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.20), transparent 26%),
+        linear-gradient(135deg, #050814 0%, #071322 45%, #02050b 100%);
+      overflow-x: hidden;
+    }
+
+    .aurora {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(120deg, rgba(124,58,237,0.18), transparent 20%, rgba(34,211,238,0.12) 45%, transparent 65%, rgba(244,114,182,0.14));
+      filter: blur(22px);
+      opacity: 0.8;
+      animation: drift 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift {
+      from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+      to { transform: translate3d(1.5%, 1.2%, 0) scale(1.04); }
+    }
+
+    .wrap {
+      position: relative;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .hero, .panel, .card {
+      background: var(--glass);
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: -40px -60px auto auto;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(34,211,238,0.35), transparent 70%);
+      filter: blur(8px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing: 0.02em;
+      line-height: 1.08;
+      background: linear-gradient(90deg, #fff, #cfe8ff 28%, #8be7ff 54%, #f7b7ff 80%, #fff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .sub {
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 70ch;
+      margin-bottom: 18px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      min-height: 98px;
+    }
+
+    .stat .label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .stat .value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+    .stat .note {
+      margin-top: 6px;
+      color: rgba(234,242,255,0.66);
+      font-size: 12px;
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(34,211,238,0.04), rgba(244,114,182,0.10));
+      pointer-events: none;
+    }
+
+    .card > * { position: relative; z-index: 1; }
+
+    .ticker {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .ticker h3 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.03em;
+    }
+
+    .tag {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #d9f7ff;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .field input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(6, 13, 24, 0.55);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: rgba(34,211,238,0.62);
+      box-shadow: 0 0 0 3px rgba(34,211,238,0.10);
+    }
+
+    .calc {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .box {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .box .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .box .v {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .history {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .history-row input { padding: 10px 10px; border-radius: 12px; }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      color: white;
+      font-weight: 700;
+      border-radius: 14px;
+      padding: 11px 14px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      box-shadow: 0 10px 26px rgba(34,211,238,0.18);
+      transition: transform .16s ease, filter .16s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: none;
+      color: var(--text);
+    }
+
+    .btn.small { padding: 9px 11px; font-size: 12px; border-radius: 12px; }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .mini {
+      font-size: 12px;
+      color: rgba(234,242,255,0.68);
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+      margin: 14px 0;
+    }
+
+    .top-right {
+      display: grid;
+      gap: 12px;
+    }
+
+    .control-card {
+      padding: 18px;
+    }
+
+    .control-card h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .control-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .note-line {
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(234,242,255,0.62);
+    }
+
+    @media (max-width: 1080px) {
+      .header, .grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .meta, .calc, .history-row { grid-template-columns: 1fr; }
+      .ticker { align-items: flex-start; flex-direction: column; }
+      .toolbar { align-items: flex-start; }
+      .history-row .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="aurora"></div>
+  <div class="wrap">
+    <div class="header">
+      <section class="hero">
+        <div class="eyebrow">✦ 宇宙科技未來風格 · 毛玻璃 · 漸層絢彩</div>
+        <h1>ETF 股息追蹤艙</h1>
+        <div class="sub">
+          追蹤 0056、00878、00919 的持有張數、估算市值、整理最近四次配息，並自動推估年度股息收入。
+          每檔都有「加入行事曆」按鈕，可把除息日與配息日快速寫進手機行事曆。📡
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">預估總市值</div>
+            <div class="value" id="totalMarketValue">NT$ 0</div>
+            <div class="note">以你輸入的現價 × 持有股數計算</div>
+          </div>
+          <div class="stat">
+            <div class="label">預估年股息收入</div>
+            <div class="value" id="totalAnnualDividend">NT$ 0</div>
+            <div class="note">以最近四次配息加總估算年度配息</div>
+          </div>
+          <div class="stat">
+            <div class="label">預估年殖利率</div>
+            <div class="value" id="yieldRate">0%</div>
+            <div class="note">年股息 ÷ 市值</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="top-right">
+        <div class="panel control-card">
+          <h2>資料保存機制</h2>
+          <p>張數、現價、配息紀錄都會寫入瀏覽器 localStorage。關掉頁面再打開，資料還在。📦</p>
+          <div class="note-line">提醒：如果你清除瀏覽器資料，本機保存也會一起消失。</div>
+        </div>
+        <div class="panel control-card">
+          <h2>年配息算法</h2>
+          <p>每檔 ETF 直接將「最近四次配息金額」加總，作為該檔的預估年配息；再乘上持有張數換算你的年收入。</p>
+          <div class="note-line">這種算法對季度配息 ETF 最直觀；若未來配息頻率改變，公式也要跟著調整。</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>持有標的</h2>
+        <div class="pill">✓ 可編輯 · ✓ 可儲存 · ✓ 可加入行事曆</div>
+      </div>
+
+      <div class="grid" id="etfGrid"></div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'etf_dividend_tracker_v1';
+
+    const defaultData = {
+      etfs: {
+        '0056': {
+          name: '元大高股息',
+          price: 0,
+          lots: 0,
+          dividends: [
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+          ]
+        },
+        '00878': {
+          name: '國泰永續高股息',
+          price: 0,
+          lots: 0,
+          dividends: [
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+          ]
+        },
+        '00919': {
+          name: '群益台灣精選高息',
+          price: 0,
+          lots: 0,
+          dividends: [
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+            { amount: 0, exDate: '', payDate: '' },
+          ]
+        }
+      }
+    };
+
+    const state = loadState();
+    const grid = document.getElementById('etfGrid');
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return structuredClone(defaultData);
+        const parsed = JSON.parse(raw);
+        return mergeDefaults(parsed, defaultData);
+      } catch (e) {
+        return structuredClone(defaultData);
+      }
+    }
+
+    function mergeDefaults(target, defaults) {
+      const out = structuredClone(defaults);
+      if (target && target.etfs) {
+        for (const ticker of Object.keys(defaults.etfs)) {
+          const t = target.etfs[ticker] || {};
+          out.etfs[ticker].name = t.name ?? out.etfs[ticker].name;
+          out.etfs[ticker].price = Number(t.price ?? out.etfs[ticker].price) || 0;
+          out.etfs[ticker].lots = Number(t.lots ?? out.etfs[ticker].lots) || 0;
+          if (Array.isArray(t.dividends) && t.dividends.length) {
+            out.etfs[ticker].dividends = out.etfs[ticker].dividends.map((d, i) => ({
+              amount: Number(t.dividends[i]?.amount ?? d.amount) || 0,
+              exDate: t.dividends[i]?.exDate ?? d.exDate,
+              payDate: t.dividends[i]?.payDate ?? d.payDate,
+            }));
+          }
+        }
+      }
+      return out;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function money(n) {
+      const num = Number(n) || 0;
+      return 'NT$ ' + Math.round(num).toLocaleString('zh-TW');
+    }
+
+    function money2(n) {
+      const num = Number(n) || 0;
+      return 'NT$ ' + num.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function num(v) {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function sharesFromLots(lots) {
+      return Math.max(0, num(lots)) * 1000;
+    }
+
+    function annualDividendPerETF(etf) {
+      return (etf.dividends || []).reduce((sum, d) => sum + num(d.amount), 0) * sharesFromLots(etf.lots);
+    }
+
+    function marketValuePerETF(etf) {
+      return num(etf.price) * sharesFromLots(etf.lots);
+    }
+
+    function render() {
+      grid.innerHTML = '';
+      const tickers = Object.keys(state.etfs);
+
+      tickers.forEach((ticker) => {
+        const etf = state.etfs[ticker];
+        const annual = annualDividendPerETF(etf);
+        const value = marketValuePerETF(etf);
+        const shares = sharesFromLots(etf.lots);
+        const yieldPct = value > 0 ? (annual / value) * 100 : 0;
+
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="ticker">
+            <div>
+              <h3>${ticker}</h3>
+              <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">${etf.name}</div>
+            </div>
+            <span class="tag">持有 ${shares.toLocaleString('zh-TW')} 股</span>
+          </div>
+
+          <div class="meta">
+            <div class="field">
+              <label>持有張數</label>
+              <input type="number" step="0.001" min="0" value="${etf.lots}" data-action="lots" data-ticker="${ticker}">
+            </div>
+            <div class="field">
+              <label>目前市價（每股）</label>
+              <input type="number" step="0.01" min="0" value="${etf.price}" data-action="price" data-ticker="${ticker}">
+            </div>
+          </div>
+
+          <div class="calc">
+            <div class="box">
+              <div class="k">預估市值</div>
+              <div class="v">${money(value)}</div>
+            </div>
+            <div class="box">
+              <div class="k">預估年股息</div>
+              <div class="v">${money(annual)}</div>
+            </div>
+            <div class="box">
+              <div class="k">年化殖利率</div>
+              <div class="v">${yieldPct.toFixed(2)}%</div>
+            </div>
+            <div class="box">
+              <div class="k">備註</div>
+              <div class="v" style="font-size: 14px; font-weight: 700; color: rgba(234,242,255,0.82);">最近四次加總估算</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+            <strong>最近四次配息紀錄</strong>
+            <button class="btn small secondary" data-action="add-row" data-ticker="${ticker}">＋ 新增一列</button>
+          </div>
+          <div class="history" data-history="${ticker}">
+            ${etf.dividends.map((d, idx) => historyRow(ticker, idx, d)).join('')}
+          </div>
+
+          <div class="footer-actions">
+            <button class="btn" data-action="save-calendar" data-ticker="${ticker}">加入行事曆</button>
+            <button class="btn secondary" data-action="reset-rows" data-ticker="${ticker}">重置四筆紀錄</button>
+          </div>
+          <div class="mini">行事曆按鈕會產生 .ics 事件檔：除息日與配息日各一個。手機可直接下載匯入。</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      updateTotals();
+      wireInputs();
+    }
+
+    function historyRow(ticker, idx, d) {
+      return `
+        <div class="history-row">
+          <input type="number" step="0.01" min="0" placeholder="配息金額" value="${d.amount}" data-action="dividend-amount" data-ticker="${ticker}" data-index="${idx}">
+          <input type="date" value="${d.exDate}" data-action="ex-date" data-ticker="${ticker}" data-index="${idx}">
+          <input type="date" value="${d.payDate}" data-action="pay-date" data-ticker="${ticker}" data-index="${idx}">
+          <button class="btn small secondary" data-action="remove-row" data-ticker="${ticker}" data-index="${idx}">刪除</button>
+        </div>
+      `;
+    }
+
+    function updateTotals() {
+      const allAnnual = Object.values(state.etfs).reduce((sum, etf) => sum + annualDividendPerETF(etf), 0);
+      const allMarket = Object.values(state.etfs).reduce((sum, etf) => sum + marketValuePerETF(etf), 0);
+      const yieldPct = allMarket > 0 ? (allAnnual / allMarket) * 100 : 0;
+      document.getElementById('totalMarketValue').textContent = money(allMarket);
+      document.getElementById('totalAnnualDividend').textContent = money(allAnnual);
+      document.getElementById('yieldRate').textContent = yieldPct.toFixed(2) + '%';
+    }
+
+    function wireInputs() {
+      grid.querySelectorAll('input[data-action]').forEach((input) => {
+        input.addEventListener('input', onInput);
+        input.addEventListener('change', onInput);
+      });
+
+      grid.querySelectorAll('button[data-action]').forEach((btn) => {
+        btn.addEventListener('click', onClick);
+      });
+    }
+
+    function onInput(e) {
+      const el = e.currentTarget;
+      const ticker = el.dataset.ticker;
+      const action = el.dataset.action;
+      const etf = state.etfs[ticker];
+      const idx = Number(el.dataset.index);
+
+      if (!etf) return;
+
+      if (action === 'lots') etf.lots = num(el.value);
+      if (action === 'price') etf.price = num(el.value);
+      if (action === 'dividend-amount') etf.dividends[idx].amount = num(el.value);
+      if (action === 'ex-date') etf.dividends[idx].exDate = el.value;
+      if (action === 'pay-date') etf.dividends[idx].payDate = el.value;
+
+      saveState();
+      render();
+    }
+
+    function onClick(e) {
+      const btn = e.currentTarget;
+      const ticker = btn.dataset.ticker;
+      const action = btn.dataset.action;
+      const etf = state.etfs[ticker];
+      if (!etf) return;
+
+      if (action === 'add-row') {
+        etf.dividends.unshift({ amount: 0, exDate: '', payDate: '' });
+        etf.dividends = etf.dividends.slice(0, 4);
+      }
+
+      if (action === 'remove-row') {
+        const idx = Number(btn.dataset.index);
+        etf.dividends.splice(idx, 1);
+        while (etf.dividends.length < 4) etf.dividends.push({ amount: 0, exDate: '', payDate: '' });
+      }
+
+      if (action === 'reset-rows') {
+        etf.dividends = [
+          { amount: 0, exDate: '', payDate: '' },
+          { amount: 0, exDate: '', payDate: '' },
+          { amount: 0, exDate: '', payDate: '' },
+          { amount: 0, exDate: '', payDate: '' },
+        ];
+      }
+
+      if (action === 'save-calendar') {
+        downloadICS(ticker, etf);
+      }
+
+      saveState();
+      render();
+    }
+
+    function formatICSDate(dateStr) {
+      if (!dateStr) return '';
+      return dateStr.replace(/-/g, '') + 'T090000';
+    }
+
+    function uid(prefix, dateStr) {
+      return `${prefix}-${dateStr || 'nodate'}-${Date.now()}@etf-tracker`;
+    }
+
+    function buildICS(ticker, etf) {
+      const now = new Date();
+      const stamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const events = [];
+
+      etf.dividends.forEach((d, i) => {
+        if (d.exDate) {
+          events.push([
+            'BEGIN:VEVENT',
+            `UID:${uid(`${ticker}-ex-${i}`, d.exDate)}`,
+            `DTSTAMP:${stamp}`,
+            `SUMMARY:${ticker} 除息日`,
+            `DESCRIPTION:${ticker} ${etf.name} 除息日`,
+            `DTSTART:${formatICSDate(d.exDate)}`,
+            'END:VEVENT'
+          ].join('\r\n'));
+        }
+        if (d.payDate) {
+          events.push([
+            'BEGIN:VEVENT',
+            `UID:${uid(`${ticker}-pay-${i}`, d.payDate)}`,
+            `DTSTAMP:${stamp}`,
+            `SUMMARY:${ticker} 配息入帳`,
+            `DESCRIPTION:${ticker} ${etf.name} 配息日`,
+            `DTSTART:${formatICSDate(d.payDate)}`,
+            'END:VEVENT'
+          ].join('\r\n'));
+        }
+      });
+
+      return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//ETF Dividend Tracker//TW//EN',
+        'CALSCALE:GREGORIAN',
+        ...events,
+        'END:VCALENDAR'
+      ].join('\r\n');
+    }
+
+    function downloadICS(ticker, etf) {
+      const ics = buildICS(ticker, etf);
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ticker}-dividend-calendar.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    render();
+  </script>
+</body>
+</html>
