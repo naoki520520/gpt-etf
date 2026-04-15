@@ -1,303 +1,372 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, Popup, ZoomControl } from 'react-leaflet';
-import L from 'leaflet';
-import { Plus, MapPin, X, Save, Trash2, Layers, Settings2, Info } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>水井數據管理系統 - 彩色科幻版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;900&display=swap');
 
-// 修復 Leaflet 預設圖標問題
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// 自定義 CSS 樣式
-const customStyles = `
-  .well-label-container {
-    background: transparent;
-    border: none;
-  }
-  .well-label {
-    background-color: #1e3a8a;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .well-label::after {
-    content: '';
-    position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid #1e3a8a;
-  }
-  .well-label-active {
-    background-color: #ef4444;
-  }
-  .well-label-active::after {
-    border-top-color: #ef4444;
-  }
-`;
-
-const App = () => {
-  const [wells, setWells] = useState(() => {
-    const saved = localStorage.getItem('well-data');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingWell, setEditingWell] = useState(null);
-  const [showList, setShowList] = useState(false);
-
-  // 儲存數據到本地
-  useEffect(() => {
-    localStorage.setItem('well-data', JSON.stringify(wells));
-  }, [wells]);
-
-  // 地圖點擊事件處理
-  const MapEvents = () => {
-    useMapEvents({
-      click(e) {
-        if (isAdding) {
-          const newWell = {
-            id: Date.now(),
-            lat: e.latlng.lat,
-            lng: e.latlng.lng,
-            name: `水井 ${wells.length + 1}`,
-            depth: '',
-            waterLevel: '',
-            note: ''
-          };
-          setWells([...wells, newWell]);
-          setEditingWell(newWell);
-          setIsAdding(false);
+        body, html { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8fafc; font-family: 'Noto Sans TC', sans-serif; }
+        #map-container { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
+        #map { height: 100%; width: 100%; background: #cbd5e1; }
+        
+        /* 強化標籤的可視度 - 增加半透明背景深度以應對彩色地圖 */
+        .well-label {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: #22d3ee;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 900;
+            font-family: 'Orbitron', sans-serif;
+            white-space: nowrap;
+            border: 1.5px solid rgba(34, 211, 238, 0.6);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-      },
-    });
-    return null;
-  };
+        .well-label::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid rgba(15, 23, 42, 0.9);
+        }
+        .well-label-active { 
+            color: #fff; 
+            background: #e11d48;
+            border-color: #fff; 
+            box-shadow: 0 0 20px rgba(225, 29, 72, 0.5);
+        }
+        .well-label-active::after { border-top-color: #e11d48; }
 
-  // 建立自定義圖標
-  const createWellIcon = (well, isActive) => {
-    const depthText = well.depth ? `深:${well.depth}m` : '未設深度';
-    const levelText = well.waterLevel ? `水位:${well.waterLevel}m` : '';
-    
-    return L.divIcon({
-      className: 'well-label-container',
-      html: `
-        <div class="well-label ${isActive ? 'well-label-active' : ''}">
-          <span style="opacity: 0.8">📍</span>
-          <span>${depthText} ${levelText ? '| ' + levelText : ''}</span>
+        /* GPS 定位藍點 */
+        .user-location-dot {
+            background-color: #3b82f6;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0px rgba(59, 130, 246, 0); }
+        }
+
+        .leaflet-div-icon { background: transparent !important; border: none !important; }
+        
+        /* 毛玻璃 UI 面板 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(15px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* 暗色科幻面板（用於編輯窗） */
+        .dark-glass {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .ui-overlay { z-index: 1000; position: relative; pointer-events: none; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+        .pointer-events-auto { pointer-events: auto; }
+        .drawer-slide { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[3000] opacity-0 invisible transition-all duration-500 pointer-events-none">
+        <div id="toastText" class="dark-glass text-cyan-400 px-8 py-3 rounded-full font-black text-sm border border-cyan-500/30 tracking-widest uppercase shadow-2xl">
+            System Online
         </div>
-      `,
-      iconSize: [120, 30],
-      iconAnchor: [60, 35],
-    });
-  };
-
-  const handleUpdateWell = (e) => {
-    e.preventDefault();
-    setWells(wells.map(w => w.id === editingWell.id ? editingWell : w));
-    setEditingWell(null);
-  };
-
-  const handleDeleteWell = (id) => {
-    if (window.confirm('確定要刪除這口水井的地標嗎？')) {
-      setWells(wells.filter(w => w.id !== id));
-      setEditingWell(null);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans">
-      <style>{customStyles}</style>
-
-      {/* Header */}
-      <header className="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-[1001]">
-        <div className="flex items-center gap-2">
-          <MapPin className="text-blue-300" />
-          <h1 className="text-lg font-bold">水井數據管理系統</h1>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setIsAdding(!isAdding)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              isAdding ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {isAdding ? <X size={16} /> : <Plus size={16} />}
-            {isAdding ? '取消新增' : '新增水井'}
-          </button>
-          <button 
-            onClick={() => setShowList(!showList)}
-            className="p-2 rounded-full hover:bg-blue-800"
-          >
-            <Layers size={20} />
-          </button>
-        </div>
-      </header>
-
-      {/* Map Container */}
-      <div className="flex-1 relative">
-        <MapContainer 
-          center={[23.85, 120.92]} // 初始定位在南投附近
-          zoom={13} 
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <ZoomControl position="bottomright" />
-          <MapEvents />
-
-          {wells.map(well => (
-            <Marker 
-              key={well.id} 
-              position={[well.lat, well.lng]}
-              icon={createWellIcon(well, editingWell?.id === well.id)}
-              eventHandlers={{
-                click: () => setEditingWell(well),
-              }}
-            />
-          ))}
-        </MapContainer>
-
-        {/* Info Tip when adding */}
-        {isAdding && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur px-4 py-2 rounded-lg border border-blue-200 shadow-lg flex items-center gap-2 pointer-events-none">
-            <Info size={18} className="text-blue-600 animate-pulse" />
-            <span className="text-sm font-medium text-slate-700">請點擊地圖上的位置來放置水井標籤</span>
-          </div>
-        )}
-
-        {/* Edit Modal (Sidebar style for mobile) */}
-        {editingWell && (
-          <div className="absolute top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl z-[1002] transition-transform duration-300 flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-              <h2 className="font-bold flex items-center gap-2 text-slate-800">
-                <Settings2 size={18} /> 編輯水井資訊
-              </h2>
-              <button onClick={() => setEditingWell(null)} className="p-1 hover:bg-slate-200 rounded text-slate-500">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdateWell} className="p-4 flex flex-col gap-4 overflow-y-auto flex-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">名稱</label>
-                <input 
-                  type="text" 
-                  value={editingWell.name}
-                  onChange={e => setEditingWell({...editingWell, name: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="例如：1號井"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">井深度 (m)</label>
-                  <input 
-                    type="number" 
-                    value={editingWell.depth}
-                    onChange={e => setEditingWell({...editingWell, depth: e.target.value})}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">靜水位 (m)</label>
-                  <input 
-                    type="number" 
-                    value={editingWell.waterLevel}
-                    onChange={e => setEditingWell({...editingWell, waterLevel: e.target.value})}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="15"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">備註說明</label>
-                <textarea 
-                  value={editingWell.note}
-                  onChange={e => setEditingWell({...editingWell, note: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-md h-24 focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="輸入施工細節或備註..."
-                />
-              </div>
-
-              <div className="mt-auto pt-6 flex flex-col gap-2">
-                <button 
-                  type="submit" 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md font-bold flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Save size={18} /> 儲存變更
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => handleDeleteWell(editingWell.id)}
-                  className="w-full bg-slate-100 hover:bg-red-50 text-red-600 py-2.5 rounded-md font-medium flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={18} /> 刪除地標
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* List Overlay */}
-        {showList && (
-          <div className="absolute top-4 left-4 z-[1000] w-64 max-h-[70%] bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col">
-            <div className="p-3 bg-slate-50 border-b font-bold text-slate-700 text-sm flex justify-between items-center">
-              所有水井列表 ({wells.length})
-              <button onClick={() => setShowList(false)}><X size={14}/></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-2">
-              {wells.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">尚未新增地標</div>
-              ) : (
-                wells.map(well => (
-                  <div 
-                    key={well.id}
-                    onClick={() => setEditingWell(well)}
-                    className="p-3 hover:bg-blue-50 rounded-lg cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
-                  >
-                    <div className="font-bold text-slate-800 text-sm">{well.name}</div>
-                    <div className="text-xs text-slate-500 mt-1 flex justify-between">
-                      <span>深度: {well.depth || '--'} m</span>
-                      <span>水位: {well.waterLevel || '--'} m</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer Mobile Stats */}
-      <footer className="bg-white border-t p-2 px-4 flex justify-between items-center sm:hidden z-[1001]">
-        <span className="text-xs font-semibold text-slate-500">水井總數: {wells.length}</span>
-        <span className="text-xs text-slate-400 italic">點擊標籤可進行編輯</span>
-      </footer>
     </div>
-  );
-};
 
-export default App;
+    <!-- 地圖主容器 -->
+    <div id="map-container"><div id="map"></div></div>
+
+    <!-- UI 控制層 -->
+    <div class="ui-overlay p-6">
+        <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center w-full">
+                <!-- 彩色版標題面板 -->
+                <div class="glass-panel p-4 px-6 rounded-2xl pointer-events-auto flex items-center gap-4 border-l-4 border-l-blue-600">
+                    <div class="relative">
+                        <svg class="text-blue-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 font-['Orbitron']">Sector Control</h1>
+                        <p class="text-lg font-black text-slate-800 leading-none">水井數據庫 <span id="wellCount" class="text-blue-600">0</span></p>
+                    </div>
+                </div>
+                
+                <!-- 新增按鈕 -->
+                <button id="addBtn" class="bg-blue-600 text-white p-5 rounded-3xl shadow-2xl pointer-events-auto active:scale-90 transition-all border-4 border-white">
+                    <svg id="addIcon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+            </div>
+
+            <!-- 功能列 -->
+            <div class="flex gap-2 pointer-events-auto overflow-x-auto no-scrollbar pb-2">
+                <button onclick="document.getElementById('csvInput').click()" class="bg-slate-900 text-white px-6 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-xl whitespace-nowrap active:scale-95 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    智慧匯入 🛠️.csv
+                </button>
+                <input type="file" id="csvInput" class="hidden" accept=".csv" onchange="handleFileSelect(event)">
+                <button onclick="exportData()" class="glass-panel text-slate-600 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap active:scale-95 border-none">備份數據</button>
+                <button onclick="handleClearAll()" class="glass-panel text-rose-500 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap border-none">清空地圖</button>
+            </div>
+        </div>
+
+        <!-- 定位按鈕 -->
+        <div class="flex justify-end pointer-events-none mb-10">
+            <button onclick="locateUser()" class="glass-panel text-blue-600 p-5 rounded-full shadow-2xl pointer-events-auto active:scale-90 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 編輯面板 (深色科幻質感) -->
+    <div id="editDrawer" class="ui-overlay drawer-slide fixed inset-x-0 bottom-0 dark-glass rounded-t-[3rem] p-10 shadow-2xl translate-y-full z-[2000] pointer-events-auto">
+        <div class="w-16 h-1.5 bg-white/10 rounded-full mx-auto mb-10"></div>
+        
+        <div class="flex justify-between items-start mb-8">
+            <div>
+                <h2 id="editTitle" class="text-3xl font-black text-white italic tracking-tighter leading-none mb-2 font-['Orbitron']">DATA SYNC</h2>
+                <p id="coordText" class="text-[10px] font-black text-cyan-400 uppercase tracking-widest"></p>
+            </div>
+            <button onclick="closeEditor()" class="p-3 bg-white/5 rounded-full text-white/40"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6 mb-10">
+            <div class="col-span-2">
+                <label class="block text-[10px] font-black text-cyan-500 mb-2 uppercase tracking-widest">Well Identity</label>
+                <input type="text" id="wellName" class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl focus:border-cyan-500 outline-none font-bold text-white text-lg">
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-blue-400 mb-2 uppercase tracking-widest font-['Orbitron']">Depth (m)</label>
+                <input type="number" id="wellDepth" class="w-full bg-blue-500/10 border border-blue-500/20 p-5 rounded-2xl focus:border-blue-400 outline-none font-black text-blue-400 text-3xl" placeholder="--">
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-fuchsia-400 mb-2 uppercase tracking-widest font-['Orbitron']">Static (m)</label>
+                <input type="number" id="wellWater" class="w-full bg-fuchsia-500/10 border border-fuchsia-500/20 p-5 rounded-2xl focus:border-fuchsia-400 outline-none font-black text-fuchsia-400 text-3xl" placeholder="--">
+            </div>
+        </div>
+
+        <div class="flex gap-4 pb-4">
+            <button onclick="handleDeleteWell()" class="flex-1 bg-white/5 text-rose-500 font-black py-5 rounded-2xl text-xs uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/20 transition-all">Delete Marker</button>
+            <button onclick="saveWell()" class="flex-[3] bg-blue-600 text-white font-black py-5 rounded-2xl shadow-xl text-xs uppercase tracking-widest active:bg-blue-700 transition-all">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- 確認窗 -->
+    <div id="confirmModal" class="fixed inset-0 z-[4000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md opacity-0 invisible transition-all duration-300">
+        <div class="dark-glass w-full max-w-xs rounded-[2rem] p-8 shadow-2xl transform scale-90 transition-transform duration-300" id="confirmContent">
+            <h3 class="text-xl font-black text-white mb-3 font-['Orbitron'] uppercase">Confirmation</h3>
+            <p id="confirmMessage" class="text-sm text-white/60 mb-8 leading-relaxed font-medium"></p>
+            <div class="flex gap-4">
+                <button onclick="closeConfirm(false)" class="flex-1 py-4 rounded-xl bg-white/5 font-bold text-white/40 text-sm italic">Abort</button>
+                <button id="confirmYesBtn" class="flex-1 py-4 rounded-xl bg-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-900/40">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 核心資料邏輯
+        let wells = [];
+        try {
+            const saved = localStorage.getItem('wells-v11-scifi-color');
+            wells = saved ? JSON.parse(saved) : [];
+        } catch(e) { wells = []; }
+
+        let map, markers = {}, userMarker, isAddingMode = false, currentId = null, onConfirm = null;
+
+        function initMap() {
+            if (map) return;
+            // 使用彩色地圖 Voyager
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.896, 120.916], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            map.on('click', (e) => {
+                if (isAddingMode) {
+                    const n = { id: Date.now(), lat: e.latlng.lat, lng: e.latlng.lng, name: `POINT ${wells.length+1}`, depth: '', waterLevel: '' };
+                    wells.push(n); saveData(); render(); setAddMode(false); openEditor(n);
+                } else closeEditor();
+            });
+            render();
+            if (wells.length > 0) fitMap();
+        }
+
+        function showToast(text) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastText').innerText = text;
+            t.classList.remove('invisible', 'opacity-0');
+            t.classList.add('opacity-100');
+            setTimeout(() => {
+                t.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => t.classList.add('invisible'), 500);
+            }, 2500);
+        }
+
+        function locateUser() {
+            if (!navigator.geolocation) { showToast("定位系統異常"); return; }
+            showToast("正在追蹤位置...");
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    map.flyTo([latitude, longitude], 16);
+                    if (userMarker) map.removeLayer(userMarker);
+                    userMarker = L.marker([latitude, longitude], { icon: L.divIcon({ className: 'user-location-dot', iconSize: [20, 20] }) }).addTo(map);
+                    showToast("定位已成功");
+                },
+                () => showToast("無法讀取 GPS 訊號"),
+                { enableHighAccuracy: true }
+            );
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            showToast("正在解析數據檔案...");
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const rows = evt.target.result.split(/\r?\n/);
+                let count = 0;
+                rows.forEach((row, idx) => {
+                    if (idx === 0 || !row.trim()) return;
+                    const c = parseCSVLine(row);
+                    if (c.length < 3) return;
+                    const title = c[0].trim().replace(/"/g, '');
+                    const note = c[1] ? c[1].trim().replace(/"/g, '') : "";
+                    const url = c[2].trim();
+                    const coordPatterns = [/search\/(-?\d+\.\d+),(-?\d+\.\d+)/, /place\/(-?\d+\.\d+),(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/];
+                    let lat = null, lng = null;
+                    for (let p of coordPatterns) {
+                        const m = url.match(p);
+                        if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); break; }
+                    }
+                    if (lat === null && note) {
+                        const rawCoords = note.match(/(-?\d+\.\d+)[,，\s]+(-?\d+\.\d+)/);
+                        if (rawCoords) { lat = parseFloat(rawCoords[1]); lng = parseFloat(rawCoords[2]); }
+                    }
+                    if (lat !== null && lng !== null) {
+                        let d = "", w = "";
+                        const ns = note.split(/[,，\s]+/).filter(n => !isNaN(parseFloat(n)));
+                        if (ns.length >= 1) d = ns[0];
+                        if (ns.length >= 2) w = ns[1];
+                        let name = (title.includes('°') || !title) ? (d ? `井_${d}` : `點_${wells.length+1}`) : title;
+                        if (!wells.some(w => Math.abs(w.lat - lat) < 0.00001 && Math.abs(w.lng - lng) < 0.00001)) {
+                            wells.push({ id: Date.now()+Math.random(), name: name.substring(0,20), lat, lng, depth: d, waterLevel: w });
+                            count++;
+                        }
+                    }
+                });
+                saveData(); render(); fitMap(); showToast(`同步完成：獲取 ${count} 個地點`);
+            };
+            reader.readAsText(file);
+            e.target.value = "";
+        }
+
+        function parseCSVLine(line) {
+            const res = []; let cur = "", inQ = false;
+            for (let i = 0; i < line.length; i++) {
+                const c = line[i];
+                if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+                else if (c === ',' && !inQ) { res.push(cur); cur = ""; }
+                else cur += c;
+            }
+            res.push(cur); return res;
+        }
+
+        function render() {
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+            wells.forEach(well => {
+                const marker = L.marker([well.lat, well.lng], { icon: L.divIcon({
+                    className: 'custom-icon',
+                    html: `<div class="well-label ${currentId === well.id ? 'well-label-active' : ''}"><span>${well.depth || '--'} / ${well.waterLevel || '--'}</span></div>`,
+                    iconSize: [110, 30], iconAnchor: [55, 34]
+                }) }).addTo(map);
+                marker.on('click', (e) => { L.DomEvent.stopPropagation(e); openEditor(well); });
+                markers[well.id] = marker;
+            });
+            document.getElementById('wellCount').innerText = wells.length;
+        }
+
+        function openEditor(well) {
+            currentId = well.id;
+            document.getElementById('wellName').value = well.name || '';
+            document.getElementById('wellDepth').value = well.depth || '';
+            document.getElementById('wellWater').value = well.waterLevel || '';
+            document.getElementById('editTitle').innerText = well.name || 'EDITING DATA';
+            document.getElementById('coordText').innerText = `SECTOR COORDS: ${well.lat.toFixed(6)}, ${well.lng.toFixed(6)}`;
+            document.getElementById('editDrawer').classList.remove('translate-y-full');
+            render();
+        }
+
+        function closeEditor() { currentId = null; document.getElementById('editDrawer').classList.add('translate-y-full'); render(); }
+        
+        function saveWell() {
+            const i = wells.findIndex(w => w.id === currentId);
+            if (i !== -1) {
+                wells[i].name = document.getElementById('wellName').value;
+                wells[i].depth = document.getElementById('wellDepth').value;
+                wells[i].waterLevel = document.getElementById('wellWater').value;
+                saveData(); closeEditor(); showToast("數據已寫入");
+            }
+        }
+        function handleDeleteWell() {
+            showConfirm("確定要刪除此點位數據嗎？", () => { wells = wells.filter(w => w.id !== currentId); saveData(); closeEditor(); showToast("已刪除"); });
+        }
+        function handleClearAll() {
+            showConfirm("此操作將清空地圖上的所有數據，確定嗎？", () => { wells = []; saveData(); render(); showToast("數據已重置"); });
+        }
+        function saveData() { localStorage.setItem('wells-v11-scifi-color', JSON.stringify(wells)); }
+        function fitMap() { if (wells.length === 0) return; const g = L.featureGroup(Object.values(markers)); map.fitBounds(g.getBounds().pad(0.2)); }
+        function exportData() {
+            const blob = new Blob([JSON.stringify(wells, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `WellData_Export.json`; a.click();
+        }
+        function setAddMode(v) {
+            isAddingMode = v;
+            const b = document.getElementById('addBtn'), i = document.getElementById('addIcon');
+            b.classList.toggle('bg-rose-600', v);
+            i.innerHTML = v ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
+            if(v) showToast("請點擊地圖標記位置");
+        }
+        function showConfirm(msg, cb) {
+            document.getElementById('confirmMessage').innerText = msg; onConfirm = cb;
+            const m = document.getElementById('confirmModal'); m.classList.remove('invisible', 'opacity-0'); m.classList.add('opacity-100');
+            document.getElementById('confirmContent').classList.replace('scale-90', 'scale-100');
+        }
+        function closeConfirm(res) {
+            const m = document.getElementById('confirmModal'); m.classList.replace('opacity-100', 'opacity-0');
+            document.getElementById('confirmContent').classList.replace('scale-100', 'scale-90');
+            setTimeout(() => m.classList.add('invisible'), 300); if (res && onConfirm) onConfirm();
+        }
+
+        document.getElementById('addBtn').onclick = () => setAddMode(!isAddingMode);
+        window.addEventListener('load', initMap);
+        setTimeout(() => { if(map) map.invalidateSize(); }, 2000);
+    </script>
+</body>
+</html>
 
