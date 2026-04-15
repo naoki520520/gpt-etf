@@ -767,6 +767,40 @@
     }
 
     render();
+  
+    // ===== 即時股價抓取（TWSE API）=====
+    async function fetchPrice(ticker) {
+      try {
+        const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${ticker}.tw`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const info = data.msgArray?.[0];
+        if (!info) return;
+
+        const price = parseFloat(info.z || info.y || info.o);
+        if (!isNaN(price)) {
+          state.etfs[ticker].price = price;
+          saveState();
+          render();
+        }
+      } catch (e) {
+        console.warn('fetch price failed', ticker);
+      }
+    }
+
+    async function fetchAllPrices() {
+      const tickers = Object.keys(state.etfs);
+      for (const t of tickers) {
+        await fetchPrice(t);
+      }
+    }
+
+    // 每60秒更新一次
+    setInterval(fetchAllPrices, 60000);
+
+    // 初始載入時抓一次
+    fetchAllPrices();
+
   </script>
 </body>
 </html>
