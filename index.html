@@ -1,407 +1,303 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nebula Dividend Tracker - 多維度穩定版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-blue: #00f3ff;
-            --neon-purple: #bc13fe;
-            --neon-pink: #ff00de;
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, Popup, ZoomControl } from 'react-leaflet';
+import L from 'leaflet';
+import { Plus, MapPin, X, Save, Trash2, Layers, Settings2, Info } from 'lucide-react';
+
+// 修復 Leaflet 預設圖標問題
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// 自定義 CSS 樣式
+const customStyles = `
+  .well-label-container {
+    background: transparent;
+    border: none;
+  }
+  .well-label {
+    background-color: #1e3a8a;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .well-label::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #1e3a8a;
+  }
+  .well-label-active {
+    background-color: #ef4444;
+  }
+  .well-label-active::after {
+    border-top-color: #ef4444;
+  }
+`;
+
+const App = () => {
+  const [wells, setWells] = useState(() => {
+    const saved = localStorage.getItem('well-data');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingWell, setEditingWell] = useState(null);
+  const [showList, setShowList] = useState(false);
+
+  // 儲存數據到本地
+  useEffect(() => {
+    localStorage.setItem('well-data', JSON.stringify(wells));
+  }, [wells]);
+
+  // 地圖點擊事件處理
+  const MapEvents = () => {
+    useMapEvents({
+      click(e) {
+        if (isAdding) {
+          const newWell = {
+            id: Date.now(),
+            lat: e.latlng.lat,
+            lng: e.latlng.lng,
+            name: `水井 ${wells.length + 1}`,
+            depth: '',
+            waterLevel: '',
+            note: ''
+          };
+          setWells([...wells, newWell]);
+          setEditingWell(newWell);
+          setIsAdding(false);
         }
+      },
+    });
+    return null;
+  };
 
-        body {
-            background: radial-gradient(circle at 50% 0%, #1a1b3a 0%, #020205 100%);
-            color: #e0e0e0;
-            font-family: 'Noto Sans TC', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .orbitron { font-family: 'Orbitron', sans-serif; }
-
-        /* 動態星空背景 */
-        .stars-container {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
-            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
-            animation: moveStars 100s linear infinite;
-        }
-
-        @keyframes moveStars {
-            from { background-position: 0 0; }
-            to { background-position: 1000px 500px; }
-        }
-
-        /* 漸層邊框效果 */
-        .gradient-border {
-            position: relative;
-            background: var(--glass);
-            border-radius: 24px;
-            z-index: 1;
-        }
-
-        .gradient-border::before {
-            content: "";
-            position: absolute;
-            top: -1px; left: -1px; right: -1px; bottom: -1px;
-            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple), var(--neon-pink));
-            border-radius: 25px;
-            z-index: -1;
-            opacity: 0.3;
-            transition: opacity 0.3s;
-        }
-
-        .gradient-border:hover::before {
-            opacity: 0.8;
-        }
-
-        .glass-card {
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-        }
-
-        .text-gradient {
-            background: linear-gradient(to right, var(--neon-blue), #fff, var(--neon-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .btn-neon {
-            background: rgba(0, 243, 255, 0.05);
-            border: 1px solid var(--neon-blue);
-            color: var(--neon-blue);
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .btn-neon:hover {
-            background: var(--neon-blue);
-            color: #000;
-            box-shadow: 0 0 25px var(--neon-blue);
-            transform: scale(1.02);
-        }
-
-        input[type="number"] {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--neon-blue);
-            color: #fff;
-            border-radius: 8px;
-            padding: 4px 12px;
-            width: 100px;
-            text-align: center;
-            font-family: 'Orbitron', sans-serif;
-        }
-
-        /* 呼吸燈效果 */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        .status-online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
-        .status-sync { background: #ffcc00; box-shadow: 0 0 10px #ffcc00; animation: blink 1s infinite; }
-        
-        @keyframes blink { 50% { opacity: 0; } }
-    </style>
-</head>
-<body class="p-4 md:p-10">
-    <div class="stars-container"></div>
-
-    <div class="max-w-6xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
-            <div class="text-center md:text-left">
-                <h1 class="orbitron text-4xl font-bold text-gradient tracking-tighter">NEBULA QUANT</h1>
-                <p class="text-[10px] text-gray-500 tracking-[0.3em] uppercase mt-1">Advanced Dividend Intelligence System</p>
-            </div>
-            <div id="sync-indicator" class="glass-card px-6 py-2 rounded-full border border-white/10 flex items-center">
-                <span class="status-dot status-sync" id="dot"></span>
-                <span class="text-[10px] orbitron text-gray-400" id="status-text">INITIALIZING...</span>
-            </div>
-        </header>
-
-        <!-- 年度收益總覽 -->
-        <div class="gradient-border p-1 mb-10">
-            <div class="glass-card rounded-[23px] p-8 md:p-12">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
-                    <div class="col-span-1 md:col-span-2">
-                        <h2 class="text-xs font-bold text-neon-blue tracking-widest uppercase mb-4">預估年度股息總額 / EST. YEARLY DIVIDEND</h2>
-                        <div class="flex items-baseline gap-4">
-                            <span class="text-5xl md:text-7xl font-bold orbitron text-white" id="total-annual">0</span>
-                            <span class="text-2xl text-gray-500 font-light italic">TWD</span>
-                        </div>
-                    </div>
-                    <div class="flex flex-col justify-center space-y-6 border-t md:border-t-0 md:border-l border-white/10 pt-6 md:pt-0 md:pl-10">
-                        <div>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-widest">月均被動收入</p>
-                            <p class="text-2xl orbitron text-white" id="monthly-avg">$0</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-widest">投資組合市值</p>
-                            <p class="text-2xl orbitron text-white" id="total-market">$0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  // 建立自定義圖標
+  const createWellIcon = (well, isActive) => {
+    const depthText = well.depth ? `深:${well.depth}m` : '未設深度';
+    const levelText = well.waterLevel ? `水位:${well.waterLevel}m` : '';
+    
+    return L.divIcon({
+      className: 'well-label-container',
+      html: `
+        <div class="well-label ${isActive ? 'well-label-active' : ''}">
+          <span style="opacity: 0.8">📍</span>
+          <span>${depthText} ${levelText ? '| ' + levelText : ''}</span>
         </div>
+      `,
+      iconSize: [120, 30],
+      iconAnchor: [60, 35],
+    });
+  };
 
-        <!-- ETF 列表 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Template for ETF Card -->
-            <div id="card-0056" class="glass-card rounded-3xl p-8 border-t-2 border-cyan-500/50 flex flex-col gap-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="orbitron text-3xl font-bold block">0056</span>
-                        <span class="text-[10px] text-cyan-400 tracking-widest">YUANTA HI-DIV</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-gray-500 block uppercase">Price</span>
-                        <span class="orbitron text-xl text-white" id="price-0056">--</span>
-                    </div>
-                </div>
+  const handleUpdateWell = (e) => {
+    e.preventDefault();
+    setWells(wells.map(w => w.id === editingWell.id ? editingWell : w));
+    setEditingWell(null);
+  };
 
-                <div class="bg-white/5 rounded-2xl p-4 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs text-gray-400 uppercase">持有張數</label>
-                        <input type="number" id="hold-0056" value="0" min="0" onchange="calculate()">
-                    </div>
-                    <div class="flex justify-between items-center border-t border-white/5 pt-3">
-                        <span class="text-xs text-gray-400 uppercase">持股市值</span>
-                        <span class="text-sm orbitron text-white" id="mv-0056">$0</span>
-                    </div>
-                </div>
+  const handleDeleteWell = (id) => {
+    if (window.confirm('確定要刪除這口水井的地標嗎？')) {
+      setWells(wells.filter(w => w.id !== id));
+      setEditingWell(null);
+    }
+  };
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">除息日期</p>
-                        <p class="text-xs font-bold text-neon-blue" id="ex-0056">--</p>
-                    </div>
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">配息金額</p>
-                        <p class="text-xs font-bold text-white" id="amt-0056">--</p>
-                    </div>
-                </div>
+  return (
+    <div className="flex flex-col h-screen bg-slate-50 font-sans">
+      <style>{customStyles}</style>
 
-                <button class="btn-neon mt-4" onclick="calendar('0056')">Add to Calendar</button>
-            </div>
-
-            <!-- 00878 -->
-            <div id="card-00878" class="glass-card rounded-3xl p-8 border-t-2 border-purple-500/50 flex flex-col gap-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="orbitron text-3xl font-bold block">00878</span>
-                        <span class="text-[10px] text-purple-400 tracking-widest">CATHAY SUSTAIN</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-gray-500 block uppercase">Price</span>
-                        <span class="orbitron text-xl text-white" id="price-00878">--</span>
-                    </div>
-                </div>
-
-                <div class="bg-white/5 rounded-2xl p-4 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs text-gray-400 uppercase">持有張數</label>
-                        <input type="number" id="hold-00878" value="0" min="0" onchange="calculate()">
-                    </div>
-                    <div class="flex justify-between items-center border-t border-white/5 pt-3">
-                        <span class="text-xs text-gray-400 uppercase">持股市值</span>
-                        <span class="text-sm orbitron text-white" id="mv-00878">$0</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">除息日期</p>
-                        <p class="text-xs font-bold text-neon-blue" id="ex-00878">--</p>
-                    </div>
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">配息金額</p>
-                        <p class="text-xs font-bold text-white" id="amt-00878">--</p>
-                    </div>
-                </div>
-
-                <button class="btn-neon mt-4" onclick="calendar('00878')">Add to Calendar</button>
-            </div>
-
-            <!-- 00919 -->
-            <div id="card-00919" class="glass-card rounded-3xl p-8 border-t-2 border-pink-500/50 flex flex-col gap-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="orbitron text-3xl font-bold block">00919</span>
-                        <span class="text-[10px] text-pink-400 tracking-widest">CAPITAL SELECT</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-gray-500 block uppercase">Price</span>
-                        <span class="orbitron text-xl text-white" id="price-00919">--</span>
-                    </div>
-                </div>
-
-                <div class="bg-white/5 rounded-2xl p-4 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs text-gray-400 uppercase">持有張數</label>
-                        <input type="number" id="hold-00919" value="0" min="0" onchange="calculate()">
-                    </div>
-                    <div class="flex justify-between items-center border-t border-white/5 pt-3">
-                        <span class="text-xs text-gray-400 uppercase">持股市值</span>
-                        <span class="text-sm orbitron text-white" id="mv-00919">$0</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">除息日期</p>
-                        <p class="text-xs font-bold text-neon-blue" id="ex-00919">--</p>
-                    </div>
-                    <div class="glass-card bg-black/20 p-3 rounded-xl">
-                        <p class="text-[9px] text-gray-500 uppercase mb-1">配息金額</p>
-                        <p class="text-xs font-bold text-white" id="amt-00919">--</p>
-                    </div>
-                </div>
-
-                <button class="btn-neon mt-4" onclick="calendar('00919')">Add to Calendar</button>
-            </div>
+      {/* Header */}
+      <header className="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-[1001]">
+        <div className="flex items-center gap-2">
+          <MapPin className="text-blue-300" />
+          <h1 className="text-lg font-bold">水井數據管理系統</h1>
         </div>
-    </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setIsAdding(!isAdding)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              isAdding ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {isAdding ? <X size={16} /> : <Plus size={16} />}
+            {isAdding ? '取消新增' : '新增水井'}
+          </button>
+          <button 
+            onClick={() => setShowList(!showList)}
+            className="p-2 rounded-full hover:bg-blue-800"
+          >
+            <Layers size={20} />
+          </button>
+        </div>
+      </header>
 
-    <script>
-        const apiKey = "";
-        const etfSymbols = ['0056', '00878', '00919'];
-        
-        // 預設參考數據（三級防禦機制的底層數據）
-        let marketData = {
-            '0056': { price: 40.0, annual: 3.2, ex: '2024/04/18', amt: 1.07, pay: '2024/05/15' },
-            '00878': { price: 22.8, annual: 2.0, ex: '2024/05/17', amt: 0.51, pay: '2024/06/12' },
-            '00919': { price: 25.5, annual: 2.8, ex: '2024/06/24', amt: 0.72, pay: '2024/07/15' }
-        };
+      {/* Map Container */}
+      <div className="flex-1 relative">
+        <MapContainer 
+          center={[23.85, 120.92]} // 初始定位在南投附近
+          zoom={13} 
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <ZoomControl position="bottomright" />
+          <MapEvents />
 
-        const format = (n) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(n);
+          {wells.map(well => (
+            <Marker 
+              key={well.id} 
+              position={[well.lat, well.lng]}
+              icon={createWellIcon(well, editingWell?.id === well.id)}
+              eventHandlers={{
+                click: () => setEditingWell(well),
+              }}
+            />
+          ))}
+        </MapContainer>
 
-        async function updateStatus(text, type) {
-            const dot = document.getElementById('dot');
-            const statusText = document.getElementById('status-text');
-            statusText.textContent = text;
-            dot.className = `status-dot ${type === 'sync' ? 'status-sync' : 'status-online'}`;
-        }
+        {/* Info Tip when adding */}
+        {isAdding && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur px-4 py-2 rounded-lg border border-blue-200 shadow-lg flex items-center gap-2 pointer-events-none">
+            <Info size={18} className="text-blue-600 animate-pulse" />
+            <span className="text-sm font-medium text-slate-700">請點擊地圖上的位置來放置水井標籤</span>
+          </div>
+        )}
 
-        async function sync() {
-            updateStatus('FETCHING DATA...', 'sync');
+        {/* Edit Modal (Sidebar style for mobile) */}
+        {editingWell && (
+          <div className="absolute top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl z-[1002] transition-transform duration-300 flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+              <h2 className="font-bold flex items-center gap-2 text-slate-800">
+                <Settings2 size={18} /> 編輯水井資訊
+              </h2>
+              <button onClick={() => setEditingWell(null)} className="p-1 hover:bg-slate-200 rounded text-slate-500">
+                <X size={20} />
+              </button>
+            </div>
             
-            // 優化後的搜尋 prompt，要求針對各股詳細列出
-            const prompt = `
-                請搜尋並回傳 0056, 00878, 00919 的即時成交價、下次除息日、預計發放日、最新配息金額、以及該股「最近四次配息金額的加總」。
-                請嚴格依照此 JSON 結構回覆：
-                {
-                   "0056": {"p": 40.2, "ex": "2024/04/18", "pay": "2024/05/15", "cur": 0.79, "ann": 3.0},
-                   "00878": {"p": 22.5, "ex": "2024/05/17", "pay": "2024/06/12", "cur": 0.51, "ann": 2.0},
-                   "00919": {"p": 25.3, "ex": "2024/06/24", "pay": "2024/07/15", "cur": 0.72, "ann": 2.8}
-                }
-            `;
+            <form onSubmit={handleUpdateWell} className="p-4 flex flex-col gap-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">名稱</label>
+                <input 
+                  type="text" 
+                  value={editingWell.name}
+                  onChange={e => setEditingWell({...editingWell, name: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  placeholder="例如：1號井"
+                />
+              </div>
 
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        tools: [{ "google_search": {} }]
-                    })
-                });
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">井深度 (m)</label>
+                  <input 
+                    type="number" 
+                    value={editingWell.depth}
+                    onChange={e => setEditingWell({...editingWell, depth: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">靜水位 (m)</label>
+                  <input 
+                    type="number" 
+                    value={editingWell.waterLevel}
+                    onChange={e => setEditingWell({...editingWell, waterLevel: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="15"
+                  />
+                </div>
+              </div>
 
-                const json = await res.json();
-                const content = json.candidates[0].content.parts[0].text;
-                
-                // 強大的解析邏輯：尋找字串中的第一個 { 和最後一個 }
-                const start = content.indexOf('{');
-                const end = content.lastIndexOf('}');
-                if (start === -1 || end === -1) throw new Error("JSON not found");
-                
-                const cleanedData = JSON.parse(content.substring(start, end + 1));
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">備註說明</label>
+                <textarea 
+                  value={editingWell.note}
+                  onChange={e => setEditingWell({...editingWell, note: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md h-24 focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="輸入施工細節或備註..."
+                />
+              </div>
 
-                etfSymbols.forEach(s => {
-                    if (cleanedData[s]) {
-                        marketData[s] = {
-                            price: cleanedData[s].p,
-                            annual: cleanedData[s].ann,
-                            ex: cleanedData[s].ex,
-                            amt: cleanedData[s].cur,
-                            pay: cleanedData[s].pay
-                        };
-                    }
-                });
+              <div className="mt-auto pt-6 flex flex-col gap-2">
+                <button 
+                  type="submit" 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md font-bold flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Save size={18} /> 儲存變更
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => handleDeleteWell(editingWell.id)}
+                  className="w-full bg-slate-100 hover:bg-red-50 text-red-600 py-2.5 rounded-md font-medium flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} /> 刪除地標
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
-                calculate();
-                updateStatus('SYSTEM ONLINE', 'online');
-            } catch (e) {
-                console.error("Sync Error:", e);
-                updateStatus('DATA RECOVERY ACTIVE', 'online'); // 顯示恢復模式而非報錯
-                calculate(); 
-            }
-        }
+        {/* List Overlay */}
+        {showList && (
+          <div className="absolute top-4 left-4 z-[1000] w-64 max-h-[70%] bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col">
+            <div className="p-3 bg-slate-50 border-b font-bold text-slate-700 text-sm flex justify-between items-center">
+              所有水井列表 ({wells.length})
+              <button onClick={() => setShowList(false)}><X size={14}/></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-2">
+              {wells.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">尚未新增地標</div>
+              ) : (
+                wells.map(well => (
+                  <div 
+                    key={well.id}
+                    onClick={() => setEditingWell(well)}
+                    className="p-3 hover:bg-blue-50 rounded-lg cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
+                  >
+                    <div className="font-bold text-slate-800 text-sm">{well.name}</div>
+                    <div className="text-xs text-slate-500 mt-1 flex justify-between">
+                      <span>深度: {well.depth || '--'} m</span>
+                      <span>水位: {well.waterLevel || '--'} m</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
-        function calculate() {
-            let totalAnn = 0;
-            let totalMkt = 0;
-            const holdings = {};
+      {/* Footer Mobile Stats */}
+      <footer className="bg-white border-t p-2 px-4 flex justify-between items-center sm:hidden z-[1001]">
+        <span className="text-xs font-semibold text-slate-500">水井總數: {wells.length}</span>
+        <span className="text-xs text-slate-400 italic">點擊標籤可進行編輯</span>
+      </footer>
+    </div>
+  );
+};
 
-            etfSymbols.forEach(s => {
-                const input = document.getElementById(`hold-${s}`);
-                const h = parseFloat(input.value) || 0;
-                holdings[s] = h;
-
-                const data = marketData[s];
-                const mv = h * 1000 * data.price;
-                const div = h * 1000 * data.annual;
-
-                totalAnn += div;
-                totalMkt += mv;
-
-                document.getElementById(`price-${s}`).textContent = `$${data.price}`;
-                document.getElementById(`mv-${s}`).textContent = `$${format(mv)}`;
-                document.getElementById(`ex-${s}`).textContent = data.ex || '--';
-                document.getElementById(`amt-${s}`).textContent = `$${data.amt}`;
-            });
-
-            document.getElementById('total-annual').textContent = format(totalAnn);
-            document.getElementById('monthly-avg').textContent = `$${format(totalAnn / 12)}`;
-            document.getElementById('total-market').textContent = `$${format(totalMkt)}`;
-
-            localStorage.setItem('nebula_holdings_v2', JSON.stringify(holdings));
-        }
-
-        function calendar(s) {
-            const data = marketData[s];
-            if (!data.ex || data.ex === '--') return;
-            const d = data.ex.replace(/\//g, '');
-            const title = encodeURIComponent(`${s} 除息日 - 每股 ${data.amt} 元`);
-            const details = encodeURIComponent(`預計配息發放日：${data.pay}`);
-            window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${d}/${d}&details=${details}`, '_blank');
-        }
-
-        window.onload = () => {
-            const saved = localStorage.getItem('nebula_holdings_v2');
-            if (saved) {
-                const h = JSON.parse(saved);
-                etfSymbols.forEach(s => {
-                    if (h[s]) document.getElementById(`hold-${s}`).value = h[s];
-                });
-            }
-            sync();
-            setInterval(sync, 600000); // 10分鐘同步一次
-        }
-    </script>
-</body>
-</html>
+export default App;
 
