@@ -8,414 +8,354 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.12);
             --neon-blue: #00f3ff;
             --neon-purple: #bc13fe;
-            --neon-pink: #ff00de;
         }
 
         body {
-            background: radial-gradient(circle at center, #0a0b1e 0%, #020205 100%);
+            background: radial-gradient(circle at top right, #0d1127 0%, #020205 100%);
             color: #e0e0e0;
             font-family: 'Noto Sans TC', sans-serif;
             min-height: 100vh;
-            overflow-x: hidden;
         }
 
         .orbitron { font-family: 'Orbitron', sans-serif; }
 
-        /* 背景動畫 */
         .stars {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
+            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
+            opacity: 0.5;
         }
 
-        /* 毛玻璃效果 */
         .glass-card {
             background: var(--glass);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-            transition: transform 0.3s ease;
+            border-radius: 24px;
+            transition: all 0.3s ease;
         }
 
         .glass-card:hover {
-            transform: translateY(-5px);
             border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
         }
 
-        /* 漸層文字 */
         .text-gradient {
-            background: linear-gradient(to right, var(--neon-blue), var(--neon-purple));
+            background: linear-gradient(135deg, #00f3ff, #bc13fe);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* 絢彩按鈕 */
         .btn-neon {
-            position: relative;
-            overflow: hidden;
             background: transparent;
             border: 1px solid var(--neon-blue);
             color: var(--neon-blue);
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: 0.85rem;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 0.8rem;
             transition: 0.3s;
-            text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .btn-neon:hover {
             background: var(--neon-blue);
             color: #000;
-            box-shadow: 0 0 20px var(--neon-blue);
-        }
-
-        .loading-shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+            box-shadow: 0 0 15px var(--neon-blue);
         }
 
         input[type="number"] {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.4);
             border: 1px solid var(--glass-border);
             color: var(--neon-blue);
-            border-radius: 8px;
-            padding: 4px 10px;
-            outline: none;
-            width: 80px;
+            border-radius: 10px;
+            padding: 5px 12px;
+            width: 90px;
+            text-align: center;
         }
 
-        input[type="number"]:focus {
-            border-color: var(--neon-purple);
+        .loading-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-6 md:p-12">
     <div class="stars"></div>
 
-    <div class="max-w-5xl mx-auto">
-        <!-- 頂部標題與總覽卡片 -->
-        <header class="mb-10 text-center">
-            <h1 class="orbitron text-4xl md:text-5xl font-bold text-gradient mb-2">NEBULA TRACKER</h1>
-            <p class="text-gray-400 tracking-widest text-sm">ETF 股息宇宙航行系統</p>
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-12 text-center">
+            <h1 class="orbitron text-5xl font-bold text-gradient mb-4">NEBULA DIVIDEND</h1>
+            <div id="status-tag" class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] tracking-widest text-gray-400">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+                SYSTEM ACTIVE
+            </div>
         </header>
 
-        <!-- 預估年股息收入卡片 -->
-        <div class="glass-card p-8 mb-10 relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-4 opacity-20">
-                <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor" class="text-neon-blue">
-                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
-                </svg>
-            </div>
-            <div class="relative z-10">
-                <h2 class="text-xl font-light text-gray-300 mb-2">預估年度股息總收入 (EST. ANNUAL INCOME)</h2>
-                <div class="flex items-baseline gap-2">
-                    <span class="text-5xl font-bold orbitron text-white" id="total-dividend">0</span>
-                    <span class="text-xl text-neon-blue font-bold">TWD</span>
+        <!-- 核心數據總覽 -->
+        <div class="glass-card p-10 mb-12 relative overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                <div>
+                    <h2 class="text-sm font-medium text-gray-400 tracking-widest mb-2 uppercase">預估年度股息收入</h2>
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-6xl font-bold orbitron text-white" id="total-dividend">0</span>
+                        <span class="text-xl text-neon-blue font-bold">TWD</span>
+                    </div>
                 </div>
-                <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 gap-6 border-l border-white/10 pl-8">
                     <div>
-                        <p class="text-xs text-gray-500">預估月平均收入</p>
-                        <p class="text-lg orbitron" id="monthly-dividend">$0</p>
+                        <p class="text-[10px] text-gray-500 uppercase mb-1">平均月收入</p>
+                        <p class="text-2xl orbitron" id="monthly-dividend">$0</p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500">當前總市價</p>
-                        <p class="text-lg orbitron" id="total-market-value">$0</p>
+                        <p class="text-[10px] text-gray-500 uppercase mb-1">投資組合總市值</p>
+                        <p class="text-2xl orbitron" id="total-market-value">$0</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ETF 列表 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="etf-container">
-            <!-- 0056 -->
-            <div id="card-0056" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-cyan-400">
-                <div class="flex justify-between items-start">
+        <!-- ETF 卡片區 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="etf-grid">
+            <!-- 0056 Card -->
+            <div id="card-0056" class="glass-card p-8 flex flex-col gap-6">
+                <div class="flex justify-between">
                     <div>
-                        <h3 class="orbitron text-2xl font-bold">0056</h3>
-                        <p class="text-xs text-cyan-400">元大高股息</p>
+                        <h3 class="orbitron text-3xl font-bold">0056</h3>
+                        <p class="text-xs text-cyan-400 tracking-widest mt-1">元大高股息</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-gray-500">即時股價</p>
-                        <p class="orbitron text-xl text-white" id="price-0056">--</p>
+                        <p class="text-[10px] text-gray-500">REAL-TIME</p>
+                        <p class="orbitron text-xl text-white" id="price-0056">---</p>
                     </div>
                 </div>
                 
-                <div class="bg-black/20 rounded-lg p-3 space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持有張數</span>
-                        <input type="number" id="holding-0056" value="0" min="0" onchange="saveData()">
+                <div class="bg-black/30 rounded-2xl p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">持有張數</span>
+                        <input type="number" id="holding-0056" value="0" min="0" onchange="saveAndCalc()">
                     </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持股市價</span>
-                        <span class="text-white" id="market-0056">$0</span>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
-                        <p class="text-sm font-bold text-neon-blue" id="ex-0056">載入中...</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
-                        <p class="text-sm font-bold text-white" id="pay-0056">載入中...</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">當前市值</span>
+                        <span class="text-sm orbitron" id="market-0056">$0</span>
                     </div>
                 </div>
 
-                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('0056')">
-                    加入行事曆
-                </button>
+                <div class="space-y-4 py-2">
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">最新除息 / 金額</span>
+                        <span class="text-xs font-bold text-neon-blue" id="ex-0056">載入中...</span>
+                    </div>
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">發放日期</span>
+                        <span class="text-xs text-white" id="pay-0056">載入中...</span>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full" onclick="addToCalendar('0056')">加入行事曆</button>
             </div>
 
-            <!-- 00878 -->
-            <div id="card-00878" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-purple-400">
-                <div class="flex justify-between items-start">
+            <!-- 00878 Card -->
+            <div id="card-00878" class="glass-card p-8 flex flex-col gap-6">
+                <div class="flex justify-between">
                     <div>
-                        <h3 class="orbitron text-2xl font-bold">00878</h3>
-                        <p class="text-xs text-purple-400">國泰永續高股息</p>
+                        <h3 class="orbitron text-3xl font-bold">00878</h3>
+                        <p class="text-xs text-purple-400 tracking-widest mt-1">國泰永續高股息</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-gray-500">即時股價</p>
-                        <p class="orbitron text-xl text-white" id="price-00878">--</p>
+                        <p class="text-[10px] text-gray-500">REAL-TIME</p>
+                        <p class="orbitron text-xl text-white" id="price-00878">---</p>
                     </div>
                 </div>
                 
-                <div class="bg-black/20 rounded-lg p-3 space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持有張數</span>
-                        <input type="number" id="holding-00878" value="0" min="0" onchange="saveData()">
+                <div class="bg-black/30 rounded-2xl p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">持有張數</span>
+                        <input type="number" id="holding-00878" value="0" min="0" onchange="saveAndCalc()">
                     </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持股市價</span>
-                        <span class="text-white" id="market-00878">$0</span>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
-                        <p class="text-sm font-bold text-neon-blue" id="ex-00878">載入中...</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
-                        <p class="text-sm font-bold text-white" id="pay-00878">載入中...</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">當前市值</span>
+                        <span class="text-sm orbitron" id="market-00878">$0</span>
                     </div>
                 </div>
 
-                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('00878')">
-                    加入行事曆
-                </button>
+                <div class="space-y-4 py-2">
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">最新除息 / 金額</span>
+                        <span class="text-xs font-bold text-neon-blue" id="ex-00878">載入中...</span>
+                    </div>
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">發放日期</span>
+                        <span class="text-xs text-white" id="pay-00878">載入中...</span>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full" onclick="addToCalendar('00878')">加入行事曆</button>
             </div>
 
-            <!-- 00919 -->
-            <div id="card-00919" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-pink-400">
-                <div class="flex justify-between items-start">
+            <!-- 00919 Card -->
+            <div id="card-00919" class="glass-card p-8 flex flex-col gap-6">
+                <div class="flex justify-between">
                     <div>
-                        <h3 class="orbitron text-2xl font-bold">00919</h3>
-                        <p class="text-xs text-pink-400">群益台灣精選高息</p>
+                        <h3 class="orbitron text-3xl font-bold">00919</h3>
+                        <p class="text-xs text-pink-400 tracking-widest mt-1">群益台灣精選高息</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-gray-500">即時股價</p>
-                        <p class="orbitron text-xl text-white" id="price-00919">--</p>
+                        <p class="text-[10px] text-gray-500">REAL-TIME</p>
+                        <p class="orbitron text-xl text-white" id="price-00919">---</p>
                     </div>
                 </div>
                 
-                <div class="bg-black/20 rounded-lg p-3 space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持有張數</span>
-                        <input type="number" id="holding-00919" value="0" min="0" onchange="saveData()">
+                <div class="bg-black/30 rounded-2xl p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">持有張數</span>
+                        <input type="number" id="holding-00919" value="0" min="0" onchange="saveAndCalc()">
                     </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-400">持股市價</span>
-                        <span class="text-white" id="market-00919">$0</span>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
-                        <p class="text-sm font-bold text-neon-blue" id="ex-00919">載入中...</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
-                        <p class="text-sm font-bold text-white" id="pay-00919">載入中...</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">當前市值</span>
+                        <span class="text-sm orbitron" id="market-00919">$0</span>
                     </div>
                 </div>
 
-                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('00919')">
-                    加入行事曆
-                </button>
+                <div class="space-y-4 py-2">
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">最新除息 / 金額</span>
+                        <span class="text-xs font-bold text-neon-blue" id="ex-00919">載入中...</span>
+                    </div>
+                    <div class="flex justify-between border-b border-white/5 pb-2">
+                        <span class="text-[10px] text-gray-500">發放日期</span>
+                        <span class="text-xs text-white" id="pay-00919">載入中...</span>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full" onclick="addToCalendar('00919')">加入行事曆</button>
             </div>
         </div>
-
-        <footer class="mt-12 text-center text-gray-600 text-[10px] uppercase tracking-widest">
-            AI Synchronized Data • Real-time Financial Analysis • System Online
-        </footer>
     </div>
 
-    <!-- 訊息提示視窗 -->
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 text-white opacity-0 transition-opacity pointer-events-none">
-    </div>
-
-    <script>
-        const apiKey = ""; // 執行環境會自動提供
-        const etfList = ['0056', '00878', '00919'];
-        let etfData = {
-            '0056': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 },
-            '00878': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 },
-            '00919': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 }
+    <script id="firebase-script">
+        const apiKey = ""; 
+        const etfs = ['0056', '00878', '00919'];
+        let store = {
+            '0056': { price: 0, annual: 0, ex: '', pay: '', current: 0 },
+            '00878': { price: 0, annual: 0, ex: '', pay: '', current: 0 },
+            '00919': { price: 0, annual: 0, ex: '', pay: '', current: 0 }
         };
 
-        // 格式化數字
-        const fmt = (num) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(num);
+        const fmt = (v) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(v);
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.style.opacity = '1';
-            setTimeout(() => toast.style.opacity = '0', 3000);
-        }
-
-        async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) throw new Error('API request failed');
-                return await response.json();
-            } catch (err) {
-                if (retries > 0) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchWithRetry(url, options, retries - 1, delay * 2);
-                }
-                throw err;
-            }
-        }
-
-        async function getEtfInfo() {
-            const systemPrompt = "你是一個專業的台灣股市數據分析師。請搜尋並回傳 0056, 00878, 00919 的最新股價、最近一次除息日、最近一次配息發放日、以及該次配息金額。另外，請找出這三支 ETF 最近 4 次已宣告或已配息的金額。";
-            const userQuery = `
-                請搜尋並以 JSON 格式回傳以下資訊：
+        async function syncData() {
+            const statusTag = document.getElementById('status-tag');
+            statusTag.innerHTML = `<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> SYNCING DATA...`;
+            
+            const prompt = `
+                搜尋 0056, 00878, 00919 的即時股價、最近一次除息日期、發放日期、配息金額、以及最近四次的總配息金額。
+                必須嚴格以 JSON 格式回覆，不要有其他文字：
                 {
-                  "0056": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 },
-                  "00878": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 },
-                  "00919": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 }
+                    "0056": {"price": 40.5, "ex_date": "2024/04/18", "pay_date": "2024/05/15", "current_div": 0.79, "last_4_total": 2.5},
+                    ...其餘兩支
                 }
-                若還沒公布下次日期，請填寫最近一次已知的。
             `;
 
             try {
-                const result = await fetchWithRetry(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: userQuery }] }],
-                            systemInstruction: { parts: [{ text: systemPrompt }] },
-                            tools: [{ "google_search": {} }],
-                            generationConfig: { responseMimeType: "application/json" }
-                        })
-                    }
-                );
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        tools: [{ "google_search": {} }]
+                    })
+                });
 
-                const data = JSON.parse(result.candidates[0].content.parts[0].text);
+                const resJson = await response.json();
+                let rawText = resJson.candidates[0].content.parts[0].text;
                 
-                etfList.forEach(code => {
-                    const item = data[code];
-                    if (item) {
-                        etfData[code].price = item.price;
-                        etfData[code].divAmt = item.current_div;
-                        etfData[code].nextEx = item.next_ex_date;
-                        etfData[code].nextPay = item.next_pay_date;
-                        // 計算年配息 (最近四次總和)
-                        etfData[code].annualDiv = item.last_4_divs.reduce((a, b) => a + b, 0);
+                // 清理可能出現的 Markdown 標記
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("Format Error");
+                
+                const data = JSON.parse(jsonMatch[0]);
+
+                etfs.forEach(code => {
+                    if (data[code]) {
+                        store[code] = {
+                            price: data[code].price,
+                            annual: data[code].last_4_total,
+                            ex: data[code].ex_date,
+                            pay: data[code].pay_date,
+                            current: data[code].current_div
+                        };
                     }
                 });
 
-                updateUI();
-            } catch (error) {
-                console.error(error);
-                showToast("數據同步失敗，請稍後再試");
+                saveAndCalc();
+                statusTag.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span> SYSTEM SYNCED`;
+            } catch (err) {
+                console.error(err);
+                statusTag.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span> SYNC FAILED - RETRYING`;
+                setTimeout(syncData, 5000);
             }
         }
 
-        function saveData() {
+        function saveAndCalc() {
             const holdings = {};
-            etfList.forEach(code => {
-                holdings[code] = document.getElementById(`holding-${code}`).value || 0;
+            let totalDiv = 0;
+            let totalMarket = 0;
+
+            etfs.forEach(code => {
+                const input = document.getElementById(`holding-${code}`);
+                const h = parseFloat(input.value) || 0;
+                holdings[code] = h;
+
+                const s = store[code];
+                const mv = h * 1000 * s.price;
+                const div = h * 1000 * s.annual;
+
+                totalDiv += div;
+                totalMarket += mv;
+
+                document.getElementById(`price-${code}`).textContent = s.price ? `$${s.price}` : '---';
+                document.getElementById(`market-${code}`).textContent = `$${fmt(mv)}`;
+                document.getElementById(`ex-${code}`).textContent = s.ex ? `${s.ex} / $${s.current}` : '載入中...';
+                document.getElementById(`pay-${code}`).textContent = s.pay || '載入中...';
             });
-            localStorage.setItem('etf_holdings', JSON.stringify(holdings));
-            updateUI();
+
+            document.getElementById('total-dividend').textContent = fmt(totalDiv);
+            document.getElementById('monthly-dividend').textContent = `$${fmt(totalDiv / 12)}`;
+            document.getElementById('total-market-value').textContent = `$${fmt(totalMarket)}`;
+
+            localStorage.setItem('etf_nebula_holdings', JSON.stringify(holdings));
         }
 
-        function loadData() {
-            const saved = localStorage.getItem('etf_holdings');
+        function load() {
+            const saved = localStorage.getItem('etf_nebula_holdings');
             if (saved) {
-                const holdings = JSON.parse(saved);
-                etfList.forEach(code => {
-                    document.getElementById(`holding-${code}`).value = holdings[code] || 0;
+                const h = JSON.parse(saved);
+                etfs.forEach(code => {
+                    if (h[code]) document.getElementById(`holding-${code}`).value = h[code];
                 });
             }
-        }
-
-        function updateUI() {
-            let totalAnnual = 0;
-            let totalValue = 0;
-
-            etfList.forEach(code => {
-                const d = etfData[code];
-                const holding = parseFloat(document.getElementById(`holding-${code}`).value) || 0;
-                const marketVal = holding * 1000 * d.price;
-                const etfAnnual = holding * 1000 * d.annualDiv;
-
-                totalAnnual += etfAnnual;
-                totalValue += marketVal;
-
-                document.getElementById(`price-${code}`).textContent = `$${d.price}`;
-                document.getElementById(`market-${code}`).textContent = `$${fmt(marketVal)}`;
-                document.getElementById(`ex-${code}`).textContent = `${d.nextEx} / $${d.divAmt}`;
-                document.getElementById(`pay-${code}`).textContent = d.nextPay || '--';
-            });
-
-            document.getElementById('total-dividend').textContent = fmt(totalAnnual);
-            document.getElementById('monthly-dividend').textContent = `$${fmt(totalAnnual / 12)}`;
-            document.getElementById('total-market-value').textContent = `$${fmt(totalValue)}`;
+            syncData();
         }
 
         function addToCalendar(code) {
-            const d = etfData[code];
-            if (!d.nextEx || d.nextEx === '載入中...') {
-                showToast("日期資訊尚在同步中");
-                return;
-            }
-
-            const cleanDate = d.nextEx.replace(/\//g, '');
-            const title = encodeURIComponent(`${code} 除息日 - 每股配發 ${d.divAmt} 元`);
-            const details = encodeURIComponent(`預計發放日: ${d.nextPay}`);
-            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${cleanDate}/${cleanDate}&details=${details}&sf=true&output=xml`;
-            
+            const s = store[code];
+            if (!s.ex) return;
+            const dateStr = s.ex.replace(/\//g, '');
+            const title = encodeURIComponent(`${code} 除息日 - $${s.current}`);
+            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=發放日:${s.pay}`;
             window.open(url, '_blank');
         }
 
-        window.onload = () => {
-            loadData();
-            getEtfInfo();
-            // 每 10 分鐘自動重新抓取
-            setInterval(getEtfInfo, 600000);
-        };
+        window.onload = load;
     </script>
 </body>
 </html>
