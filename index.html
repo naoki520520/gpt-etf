@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>水井數據管理系統 - v12 最終修復版</title>
+    <title>水井數據管理系統 - v13 終極修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -13,9 +14,9 @@
         #map-container { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
         #map { height: 100%; width: 100%; background: #cbd5e1; }
         
-        /* 地圖標籤 */
+        /* 標籤樣式 */
         .well-label {
-            background: rgba(15, 23, 42, 0.85);
+            background: rgba(15, 23, 42, 0.88);
             backdrop-filter: blur(8px);
             color: #22d3ee;
             padding: 4px 12px;
@@ -45,11 +46,11 @@
             color: #fff; 
             background: #e11d48;
             border-color: #fff; 
-            box-shadow: 0 0 20px rgba(225, 29, 72, 0.5);
+            box-shadow: 0 0 20px rgba(225, 29, 72, 0.6);
         }
         .well-label-active::after { border-top-color: #e11d48; }
 
-        /* GPS 定位藍點 */
+        /* GPS 定位點 */
         .user-location-dot {
             background-color: #3b82f6;
             border: 3px solid #fff;
@@ -65,17 +66,17 @@
 
         .leaflet-div-icon { background: transparent !important; border: none !important; }
         
-        /* 介面層級設計 */
+        /* 介面設計 */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(15px) saturate(160%);
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
         }
         
         .dark-glass {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(20px);
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(25px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
         }
@@ -85,29 +86,30 @@
         .drawer-slide { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* 最強確認視窗層級 */
-        #confirmModal { z-index: 9999; }
+        /* 彈窗層級 */
+        #confirmModal { z-index: 99999; }
+        #editDrawer { z-index: 5000; }
     </style>
 </head>
 <body>
 
-    <!-- Toast 訊息提示 -->
-    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[5000] opacity-0 invisible transition-all duration-500 pointer-events-none">
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[6000] opacity-0 invisible transition-all duration-500 pointer-events-none">
         <div id="toastText" class="dark-glass text-cyan-400 px-8 py-3 rounded-full font-black text-sm border border-cyan-500/30 tracking-widest shadow-2xl">
-            系統已連線
+            系統準備就緒
         </div>
     </div>
 
     <!-- 地圖主體 -->
     <div id="map-container"><div id="map"></div></div>
 
-    <!-- UI 操作介面 -->
+    <!-- UI 控制層 -->
     <div class="ui-overlay p-6">
         <div class="flex flex-col gap-4">
             <div class="flex justify-between items-center w-full">
-                <!-- 狀態面板 -->
+                <!-- 狀態儀表板 -->
                 <div class="glass-panel p-4 px-6 rounded-2xl pointer-events-auto flex items-center gap-4 border-l-4 border-l-blue-600">
-                    <div class="relative text-blue-600">
+                    <div class="text-blue-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
                     <div>
@@ -116,25 +118,24 @@
                     </div>
                 </div>
                 
-                <!-- 新增點位按鈕 -->
+                <!-- 新增按鈕 -->
                 <button id="addBtn" class="bg-blue-600 text-white p-5 rounded-3xl shadow-2xl pointer-events-auto active:scale-90 transition-all border-4 border-white">
                     <svg id="addIcon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
             </div>
 
-            <!-- 功能控制列 -->
             <div class="flex gap-2 pointer-events-auto overflow-x-auto no-scrollbar pb-2">
                 <button onclick="document.getElementById('csvInput').click()" class="bg-slate-900 text-white px-6 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-xl whitespace-nowrap active:scale-95 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     智慧同步 CSV
                 </button>
                 <input type="file" id="csvInput" class="hidden" accept=".csv" onchange="handleFileSelect(event)">
-                <button onclick="exportData()" class="glass-panel text-slate-600 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap active:scale-95 border-none">導出備份</button>
-                <button onclick="handleClearAll()" class="glass-panel text-rose-500 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap border-none">清空地圖</button>
+                <button onclick="exportData()" class="glass-panel text-slate-600 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap active:scale-95 border-none">備份</button>
+                <button onclick="handleClearAllClick()" class="glass-panel text-rose-500 px-6 py-3 rounded-xl text-xs font-black whitespace-nowrap border-none">全部清空</button>
             </div>
         </div>
 
-        <!-- 定位按鈕 -->
+        <!-- 定位鈕 -->
         <div class="flex justify-end pointer-events-none mb-10">
             <button onclick="locateUser()" class="glass-panel text-blue-600 p-5 rounded-full shadow-2xl pointer-events-auto active:scale-90 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/><circle cx="12" cy="12" r="3"/></svg>
@@ -142,8 +143,8 @@
         </div>
     </div>
 
-    <!-- 編輯抽屜 -->
-    <div id="editDrawer" class="ui-overlay drawer-slide fixed inset-x-0 bottom-0 dark-glass rounded-t-[3rem] p-10 shadow-2xl translate-y-full z-[1001] pointer-events-auto">
+    <!-- 編輯面板 -->
+    <div id="editDrawer" class="ui-overlay drawer-slide fixed inset-x-0 bottom-0 dark-glass rounded-t-[3rem] p-10 shadow-2xl translate-y-full pointer-events-auto">
         <div class="w-16 h-1.5 bg-white/10 rounded-full mx-auto mb-10"></div>
         
         <div class="flex justify-between items-start mb-8">
@@ -164,7 +165,7 @@
                 <input type="number" id="wellDepth" class="w-full bg-blue-500/10 border border-blue-500/20 p-5 rounded-2xl focus:border-blue-400 outline-none font-black text-blue-400 text-3xl" placeholder="--">
             </div>
             <div>
-                <label class="block text-[10px] font-black text-fuchsia-400 mb-2 uppercase tracking-widest font-['Orbitron']">水位 (m)</label>
+                <label class="block text-[10px] font-black text-fuchsia-400 mb-2 uppercase tracking-widest font-['Orbitron']">靜水位 (m)</label>
                 <input type="number" id="wellWater" class="w-full bg-fuchsia-500/10 border border-fuchsia-500/20 p-5 rounded-2xl focus:border-fuchsia-400 outline-none font-black text-fuchsia-400 text-3xl" placeholder="--">
             </div>
         </div>
@@ -175,50 +176,81 @@
         </div>
     </div>
 
-    <!-- 最高層級確認視窗 -->
+    <!-- 終極確認視窗 -->
     <div id="confirmModal" class="fixed inset-0 flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md opacity-0 invisible transition-all duration-300">
         <div class="dark-glass w-full max-w-xs rounded-[2rem] p-8 shadow-2xl transform scale-90 transition-transform duration-300" id="confirmContent">
-            <h3 class="text-xl font-black text-white mb-3 font-['Orbitron'] uppercase tracking-wider">執行確認</h3>
-            <p id="confirmMessage" class="text-sm text-white/60 mb-8 leading-relaxed font-medium">您確定要執行此操作嗎？</p>
+            <h3 class="text-xl font-black text-white mb-3 font-['Orbitron'] uppercase tracking-wider">程序確認</h3>
+            <p id="confirmMessage" class="text-sm text-white/60 mb-8 leading-relaxed font-medium">訊息</p>
             <div class="flex gap-4">
-                <button onclick="closeConfirmModal(false)" class="flex-1 py-4 rounded-xl bg-white/5 font-bold text-white/40 text-sm italic">取消</button>
-                <button id="realConfirmBtn" class="flex-1 py-4 rounded-xl bg-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-900/40">確認</button>
+                <button onclick="closeConfirmModal(false)" class="flex-1 py-4 rounded-xl bg-white/5 font-bold text-white/40 text-sm">取消</button>
+                <button id="finalConfirmBtn" class="flex-1 py-4 rounded-xl bg-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-900/40">確認執行</button>
             </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 資料與狀態管理
+        // 資料管理
         let wells = [];
         try {
-            const saved = localStorage.getItem('wells-v12-final');
+            const saved = localStorage.getItem('wells-v13-final');
             wells = saved ? JSON.parse(saved) : [];
         } catch(e) { wells = []; }
 
-        let map, markers = {}, userMarker, isAddingMode = false, currentId = null, pendingAction = null;
+        let map, wellLayerGroup, userMarker, isAddingMode = false, currentId = null, pendingTask = null;
 
-        // 初始化地圖
+        // 初始化
         function initMap() {
             if (map) return;
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.896, 120.916], 13);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+            // 建立專屬圖層組
+            wellLayerGroup = L.layerGroup().addTo(map);
+
             map.on('click', (e) => {
                 if (isAddingMode) {
-                    const n = { id: Date.now(), lat: e.latlng.lat, lng: e.latlng.lng, name: `新地點 ${wells.length+1}`, depth: '', waterLevel: '' };
+                    const n = { id: Date.now(), lat: e.latlng.lat, lng: e.latlng.lng, name: `新標記 ${wells.length+1}`, depth: '', waterLevel: '' };
                     wells.push(n); saveData(); render(); setAddMode(false); openEditor(n);
                 } else closeEditor();
             });
+
             render();
             if (wells.length > 0) fitMap();
         }
 
-        // --- 強效確認視窗系統 ---
-        function showConfirmUI(msg, callback) {
+        // --- 核心渲染：徹底清空舊圖層 ---
+        function render() {
+            if (!wellLayerGroup) return;
+            
+            // 終極做法：直接清空圖層組內的所有內容
+            wellLayerGroup.clearLayers();
+
+            wells.forEach(well => {
+                const marker = L.marker([well.lat, well.lng], { 
+                    icon: L.divIcon({
+                        className: 'custom-icon',
+                        html: `<div class="well-label ${currentId === well.id ? 'well-label-active' : ''}"><span>${well.depth || '--'} / ${well.waterLevel || '--'}</span></div>`,
+                        iconSize: [110, 30], iconAnchor: [55, 34]
+                    }) 
+                });
+                
+                marker.on('click', (e) => { 
+                    L.DomEvent.stopPropagation(e); 
+                    openEditor(well); 
+                });
+                
+                wellLayerGroup.addLayer(marker);
+            });
+            
+            document.getElementById('wellCount').innerText = wells.length;
+        }
+
+        // 彈窗系統
+        function showConfirm(msg, callback) {
             document.getElementById('confirmMessage').innerText = msg;
-            pendingAction = callback;
+            pendingTask = callback;
             const m = document.getElementById('confirmModal');
             m.classList.remove('invisible', 'opacity-0');
             m.classList.add('opacity-100');
@@ -230,17 +262,12 @@
             m.classList.replace('opacity-100', 'opacity-0');
             document.getElementById('confirmContent').classList.replace('scale-100', 'scale-90');
             setTimeout(() => m.classList.add('invisible'), 300);
-            
-            if (execute && pendingAction) {
-                pendingAction();
-            }
-            pendingAction = null;
+            if (execute && pendingTask) pendingTask();
+            pendingTask = null;
         }
 
-        // 綁定確認按鈕的實體點擊
-        document.getElementById('realConfirmBtn').onclick = () => closeConfirmModal(true);
+        document.getElementById('finalConfirmBtn').onclick = () => closeConfirmModal(true);
 
-        // UI 反饋
         function showToast(text) {
             const t = document.getElementById('toast');
             document.getElementById('toastText').innerText = text;
@@ -252,10 +279,10 @@
             }, 2500);
         }
 
-        // 定位
+        // GPS
         function locateUser() {
-            if (!navigator.geolocation) { showToast("定位模組異常"); return; }
-            showToast("正在追蹤座標...");
+            if (!navigator.geolocation) { showToast("定位失敗"); return; }
+            showToast("正在搜尋 GPS 衛星...");
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const { latitude, longitude } = pos.coords;
@@ -264,16 +291,16 @@
                     userMarker = L.marker([latitude, longitude], { icon: L.divIcon({ className: 'user-location-dot', iconSize: [20, 20] }) }).addTo(map);
                     showToast("定位已更新");
                 },
-                () => showToast("無法讀取 GPS"),
+                () => showToast("無法讀取座標"),
                 { enableHighAccuracy: true }
             );
         }
 
-        // CSV 解析
+        // 檔案處理
         function handleFileSelect(e) {
             const file = e.target.files[0];
             if (!file) return;
-            showToast("正在同步數據...");
+            showToast("同步數據中...");
             const reader = new FileReader();
             reader.onload = function(evt) {
                 const rows = evt.target.result.split(/\r?\n/);
@@ -307,7 +334,7 @@
                         }
                     }
                 });
-                saveData(); render(); fitMap(); showToast(`成功同步 ${count} 個點位數據`);
+                saveData(); render(); fitMap(); showToast(`已成功同步 ${count} 個點位`);
             };
             reader.readAsText(file);
             e.target.value = "";
@@ -324,28 +351,14 @@
             res.push(cur); return res;
         }
 
-        function render() {
-            Object.values(markers).forEach(m => map.removeLayer(m));
-            markers = {};
-            wells.forEach(well => {
-                const marker = L.marker([well.lat, well.lng], { icon: L.divIcon({
-                    className: 'custom-icon',
-                    html: `<div class="well-label ${currentId === well.id ? 'well-label-active' : ''}"><span>${well.depth || '--'} / ${well.waterLevel || '--'}</span></div>`,
-                    iconSize: [110, 30], iconAnchor: [55, 34]
-                }) }).addTo(map);
-                marker.on('click', (e) => { L.DomEvent.stopPropagation(e); openEditor(well); });
-                markers[well.id] = marker;
-            });
-            document.getElementById('wellCount').innerText = wells.length;
-        }
-
+        // 編輯器
         function openEditor(well) {
             currentId = well.id;
             document.getElementById('wellName').value = well.name || '';
             document.getElementById('wellDepth').value = well.depth || '';
             document.getElementById('wellWater').value = well.waterLevel || '';
-            document.getElementById('editTitle').innerText = well.name || '數據同步';
-            document.getElementById('coordText').innerText = `目前座標：${well.lat.toFixed(6)}, ${well.lng.toFixed(6)}`;
+            document.getElementById('editTitle').innerText = well.name || '數據編輯';
+            document.getElementById('coordText').innerText = `座標：${well.lat.toFixed(6)}, ${well.lng.toFixed(6)}`;
             document.getElementById('editDrawer').classList.remove('translate-y-full');
             render();
         }
@@ -358,35 +371,44 @@
                 wells[i].name = document.getElementById('wellName').value;
                 wells[i].depth = document.getElementById('wellDepth').value;
                 wells[i].waterLevel = document.getElementById('wellWater').value;
-                saveData(); closeEditor(); showToast("數據已成功儲存");
+                saveData(); closeEditor(); showToast("數據已儲存");
             }
         }
 
-        // --- 修復後的刪除邏輯 ---
         function handleDeleteClick() {
-            showConfirmUI("確定要刪除此地點數據嗎？此操作將無法復原。", () => {
+            showConfirm("確定要刪除此點位嗎？此動作將無法還原。", () => {
                 wells = wells.filter(w => w.id !== currentId);
-                saveData();
-                closeEditor();
-                showToast("已成功移除點位");
+                saveData(); closeEditor(); showToast("點位已移除");
             });
         }
 
-        function handleClearAll() {
-            showConfirmUI("注意：這將清空地圖上的『所有』資料，確定執行？", () => {
-                wells = [];
-                saveData();
-                render();
-                showToast("地圖數據已完全重置");
+        // --- 徹底清除所有標記 ---
+        function handleClearAllClick() {
+            showConfirm("警告：這將徹底清空地圖上所有的點位資料！", () => {
+                wells = []; // 清空數據數組
+                saveData(); // 儲存空數據
+                
+                // 1. 清空水井圖層組
+                if(wellLayerGroup) wellLayerGroup.clearLayers();
+                
+                // 2. 清空 GPS 定位點
+                if(userMarker) {
+                    map.removeLayer(userMarker);
+                    userMarker = null;
+                }
+                
+                // 3. 重新渲染 (確保 UI 同步)
+                render(); 
+                showToast("地圖數據已完全清空");
             });
         }
 
-        function saveData() { localStorage.setItem('wells-v12-final', JSON.stringify(wells)); }
-        function fitMap() { if (wells.length === 0) return; const g = L.featureGroup(Object.values(markers)); map.fitBounds(g.getBounds().pad(0.2)); }
+        function saveData() { localStorage.setItem('wells-v13-final', JSON.stringify(wells)); }
+        function fitMap() { if (wells.length === 0) return; const g = L.featureGroup(wellLayerGroup.getLayers()); if(g.getLayers().length > 0) map.fitBounds(g.getBounds().pad(0.2)); }
         function exportData() {
             const blob = new Blob([JSON.stringify(wells, null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `水井數據匯出_${new Date().toISOString().split('T')[0]}.json`; a.click();
+            a.download = `水井備份_${new Date().toISOString().split('T')[0]}.json`; a.click();
         }
         function setAddMode(v) {
             isAddingMode = v;
