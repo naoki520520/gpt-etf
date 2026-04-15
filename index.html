@@ -433,7 +433,7 @@
       <div class="toolbar">
         <button class="btn" onclick="fetchAllPrices()">🔄 手動刷新股價</button>
         <h2>持有標的</h2>
-        <div class="pill">✓ 可編輯 · ✓ 可儲存 · ✓ 可加入行事曆</div>
+        <div class="pill">✓ 可編輯 · ✓ 可儲存 · ✓ 可加入行事曆 · ⏱ <span id="lastUpdate">尚未更新</span></div>
       </div>
 
       <div class="grid" id="etfGrid"></div>
@@ -754,6 +754,33 @@
       ].join('\r\n');
     }
 
+    // ===== 自動抓配息（簡化示意版）=====
+    async function fetchDividends(ticker){
+      try{
+        // ⚠️ 示意API（實務需換成正式資料源）
+        const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${ticker}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const data = (json.data || []).slice(-4).reverse();
+        if(!data.length) return;
+
+        state.etfs[ticker].dividends = data.map(d => ({
+          amount: d.CashDividend || 0,
+          exDate: d.ExDividendTradingDate || '',
+          payDate: d.DividendPaymentDate || ''
+        }));
+
+        saveState();
+        render();
+      }catch(e){
+        console.warn('fetch dividend failed', ticker);
+      }
+    }
+
+    function fetchAllDividends(){
+      Object.keys(state.etfs).forEach(t => fetchDividends(t));
+    }
+
     function downloadICS(ticker, etf) {
       const ics = buildICS(ticker, etf);
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
@@ -789,11 +816,20 @@
       }
     }
 
+    async function updateTimestamp(){
+      const now = new Date();
+      const t = now.toLocaleTimeString('zh-TW');
+      const el = document.getElementById('lastUpdate');
+      if(el) el.textContent = `更新於 ${t}`;
+    }
+
     async function fetchAllPrices() {
       console.log('手動刷新股價');
       const tickers = Object.keys(state.etfs);
       for (const t of tickers) {
         await fetchPrice(t);
+      }
+      updateTimestamp();
       }
     }
 
