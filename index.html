@@ -1,844 +1,424 @@
+```html
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ETF 股息追蹤器</title>
-  <style>
-    :root {
-      --bg1: #06111f;
-      --bg2: #0b1f3a;
-      --glass: rgba(255, 255, 255, 0.10);
-      --glass-strong: rgba(255, 255, 255, 0.16);
-      --stroke: rgba(255, 255, 255, 0.18);
-      --text: #eaf2ff;
-      --muted: rgba(234, 242, 255, 0.72);
-      --accent1: #7c3aed;
-      --accent2: #22d3ee;
-      --accent3: #f472b6;
-      --accent4: #60a5fa;
-      --success: #34d399;
-      --warning: #fbbf24;
-      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
-      --radius: 24px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Dividend Tracker - 宇宙科技股息追蹤</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --neon-pink: #ff00de;
+        }
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
-      color: var(--text);
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at top left, rgba(124, 58, 237, 0.40), transparent 28%),
-        radial-gradient(circle at top right, rgba(34, 211, 238, 0.28), transparent 24%),
-        radial-gradient(circle at bottom left, rgba(244, 114, 182, 0.22), transparent 24%),
-        radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.20), transparent 26%),
-        linear-gradient(135deg, #050814 0%, #071322 45%, #02050b 100%);
-      overflow-x: hidden;
-    }
+        body {
+            background: radial-gradient(circle at center, #0a0b1e 0%, #020205 100%);
+            color: #e0e0e0;
+            font-family: 'Noto Sans TC', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
-    .aurora {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        linear-gradient(120deg, rgba(124,58,237,0.18), transparent 20%, rgba(34,211,238,0.12) 45%, transparent 65%, rgba(244,114,182,0.14));
-      filter: blur(22px);
-      opacity: 0.8;
-      animation: drift 14s ease-in-out infinite alternate;
-    }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
 
-    @keyframes drift {
-      from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
-      to { transform: translate3d(1.5%, 1.2%, 0) scale(1.04); }
-    }
+        /* 背景動畫 */
+        .stars {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
+        }
 
-    .wrap {
-      position: relative;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 24px 16px 40px;
-    }
+        /* 毛玻璃效果 */
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            transition: transform 0.3s ease;
+        }
 
-    .header {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-blue);
+        }
 
-    .hero, .panel, .card {
-      background: var(--glass);
-      border: 1px solid var(--stroke);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
+        /* 漸層文字 */
+        .text-gradient {
+            background: linear-gradient(to right, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-    .hero {
-      padding: 22px;
-      position: relative;
-      overflow: hidden;
-    }
+        /* 絢彩按鈕 */
+        .btn-neon {
+            position: relative;
+            overflow: hidden;
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: -40px -60px auto auto;
-      width: 180px;
-      height: 180px;
-      background: radial-gradient(circle, rgba(34,211,238,0.35), transparent 70%);
-      filter: blur(8px);
-    }
+        .btn-neon:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
 
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
+        .loading-shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
 
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 4vw, 46px);
-      letter-spacing: 0.02em;
-      line-height: 1.08;
-      background: linear-gradient(90deg, #fff, #cfe8ff 28%, #8be7ff 54%, #f7b7ff 80%, #fff);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
 
-    .sub {
-      color: var(--muted);
-      line-height: 1.6;
-      max-width: 70ch;
-      margin-bottom: 18px;
-    }
+        input[type="number"] {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            color: var(--neon-blue);
+            border-radius: 8px;
+            padding: 4px 10px;
+            outline: none;
+            width: 80px;
+        }
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .stat {
-      padding: 16px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.10);
-      min-height: 98px;
-    }
-
-    .stat .label {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .stat .value {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: 0.01em;
-    }
-    .stat .note {
-      margin-top: 6px;
-      color: rgba(234,242,255,0.66);
-      font-size: 12px;
-    }
-
-    .panel {
-      padding: 18px;
-    }
-
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .toolbar h2 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .card {
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(34,211,238,0.04), rgba(244,114,182,0.10));
-      pointer-events: none;
-    }
-
-    .card > * { position: relative; z-index: 1; }
-
-    .ticker {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .ticker h3 {
-      margin: 0;
-      font-size: 22px;
-      letter-spacing: 0.03em;
-    }
-
-    .tag {
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #d9f7ff;
-    }
-
-    .meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .field label {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .field input {
-      width: 100%;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(6, 13, 24, 0.55);
-      color: var(--text);
-      border-radius: 14px;
-      padding: 11px 12px;
-      outline: none;
-    }
-
-    .field input:focus {
-      border-color: rgba(34,211,238,0.62);
-      box-shadow: 0 0 0 3px rgba(34,211,238,0.10);
-    }
-
-    .calc {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .box {
-      padding: 12px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.10);
-    }
-
-    .box .k {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 5px;
-    }
-
-    .box .v {
-      font-size: 20px;
-      font-weight: 800;
-    }
-
-    .history {
-      margin-top: 12px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .history-row {
-      display: grid;
-      grid-template-columns: 1.15fr 1fr 1fr auto;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .history-row input { padding: 10px 10px; border-radius: 12px; }
-
-    .btn {
-      appearance: none;
-      border: 0;
-      cursor: pointer;
-      color: white;
-      font-weight: 700;
-      border-radius: 14px;
-      padding: 11px 14px;
-      background: linear-gradient(135deg, var(--accent1), var(--accent2));
-      box-shadow: 0 10px 26px rgba(34,211,238,0.18);
-      transition: transform .16s ease, filter .16s ease;
-      white-space: nowrap;
-    }
-
-    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
-    .btn.secondary {
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.14);
-      box-shadow: none;
-      color: var(--text);
-    }
-
-    .btn.small { padding: 9px 11px; font-size: 12px; border-radius: 12px; }
-
-    .footer-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .mini {
-      font-size: 12px;
-      color: rgba(234,242,255,0.68);
-      line-height: 1.5;
-      margin-top: 10px;
-    }
-
-    .divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
-      margin: 14px 0;
-    }
-
-    .top-right {
-      display: grid;
-      gap: 12px;
-    }
-
-    .control-card {
-      padding: 18px;
-    }
-
-    .control-card h2 {
-      margin: 0 0 8px;
-      font-size: 20px;
-    }
-
-    .control-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .note-line {
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(234,242,255,0.62);
-    }
-
-    @media (max-width: 1080px) {
-      .header, .grid { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 640px) {
-      .meta, .calc, .history-row { grid-template-columns: 1fr; }
-      .ticker { align-items: flex-start; flex-direction: column; }
-      .toolbar { align-items: flex-start; }
-      .history-row .btn { width: 100%; }
-    }
-  </style>
+        input[type="number"]:focus {
+            border-color: var(--neon-purple);
+        }
+    </style>
 </head>
-<body>
-  <div class="aurora"></div>
-  <div class="wrap">
-    <div class="header">
-      <section class="hero">
-        <div class="eyebrow">✦ 宇宙科技未來風格 · 毛玻璃 · 漸層絢彩</div>
-        <h1>ETF 股息追蹤艙</h1>
-        <div class="sub">
-          追蹤 0056、00878、00919 的持有張數、估算市值、整理最近四次配息，並自動推估年度股息收入。
-          每檔都有「加入行事曆」按鈕，可把除息日與配息日快速寫進手機行事曆。📡
-        </div>
-        <div class="stats">
-          <div class="stat">
-            <div class="label">預估總市值</div>
-            <div class="value" id="totalMarketValue">NT$ 0</div>
-            <div class="note">以你輸入的現價 × 持有股數計算</div>
-          </div>
-          <div class="stat">
-            <div class="label">預估年股息收入</div>
-            <div class="value" id="totalAnnualDividend">NT$ 0</div>
-            <div class="note">以最近四次配息加總估算年度配息</div>
-          </div>
-          <div class="stat">
-            <div class="label">預估年殖利率</div>
-            <div class="value" id="yieldRate">0%</div>
-            <div class="note">年股息 ÷ 市值</div>
-          </div>
-        </div>
-      </section>
+<body class="p-4 md:p-8">
+    <div class="stars"></div>
 
-      <aside class="top-right">
-        <div class="panel control-card">
-          <h2>資料保存機制</h2>
-          <p>張數、現價、配息紀錄都會寫入瀏覽器 localStorage。關掉頁面再打開，資料還在。📦</p>
-          <div class="note-line">提醒：如果你清除瀏覽器資料，本機保存也會一起消失。</div>
+    <div class="max-w-5xl mx-auto">
+        <!-- 頂部標題與總覽卡片 -->
+        <header class="mb-10 text-center">
+            <h1 class="orbitron text-4xl md:text-5xl font-bold text-gradient mb-2">NEBULA TRACKER</h1>
+            <p class="text-gray-400 tracking-widest text-sm">ETF 股息宇宙航行系統</p>
+        </header>
+
+        <!-- 預估年股息收入卡片 -->
+        <div class="glass-card p-8 mb-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-20">
+                <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor" class="text-neon-blue">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+            </div>
+            <div class="relative z-10">
+                <h2 class="text-xl font-light text-gray-300 mb-2">預估年度股息總收入 (EST. ANNUAL INCOME)</h2>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-5xl font-bold orbitron text-white" id="total-dividend">0</span>
+                    <span class="text-xl text-neon-blue font-bold">TWD</span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">預估月平均收入</p>
+                        <p class="text-lg orbitron" id="monthly-dividend">$0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">當前總市價</p>
+                        <p class="text-lg orbitron" id="total-market-value">$0</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="panel control-card">
-          <h2>年配息算法</h2>
-          <p>每檔 ETF 直接將「最近四次配息金額」加總，作為該檔的預估年配息；再乘上持有張數換算你的年收入。</p>
-          <div class="note-line">這種算法對季度配息 ETF 最直觀；若未來配息頻率改變，公式也要跟著調整。</div>
+
+        <!-- ETF 列表 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="etf-container">
+            <!-- 0056 -->
+            <div id="card-0056" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-cyan-400">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="orbitron text-2xl font-bold">0056</h3>
+                        <p class="text-xs text-cyan-400">元大高股息</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500">即時股價</p>
+                        <p class="orbitron text-xl text-white" id="price-0056">--</p>
+                    </div>
+                </div>
+                
+                <div class="bg-black/20 rounded-lg p-3 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持有張數</span>
+                        <input type="number" id="holding-0056" value="0" min="0" onchange="saveData()">
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持股市價</span>
+                        <span class="text-white" id="market-0056">$0</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
+                        <p class="text-sm font-bold text-neon-blue" id="ex-0056">載入中...</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
+                        <p class="text-sm font-bold text-white" id="pay-0056">載入中...</p>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('0056')">
+                    加入行事曆
+                </button>
+            </div>
+
+            <!-- 00878 -->
+            <div id="card-00878" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-purple-400">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="orbitron text-2xl font-bold">00878</h3>
+                        <p class="text-xs text-purple-400">國泰永續高股息</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500">即時股價</p>
+                        <p class="orbitron text-xl text-white" id="price-00878">--</p>
+                    </div>
+                </div>
+                
+                <div class="bg-black/20 rounded-lg p-3 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持有張數</span>
+                        <input type="number" id="holding-00878" value="0" min="0" onchange="saveData()">
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持股市價</span>
+                        <span class="text-white" id="market-00878">$0</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
+                        <p class="text-sm font-bold text-neon-blue" id="ex-00878">載入中...</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
+                        <p class="text-sm font-bold text-white" id="pay-00878">載入中...</p>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('00878')">
+                    加入行事曆
+                </button>
+            </div>
+
+            <!-- 00919 -->
+            <div id="card-00919" class="glass-card p-6 flex flex-col gap-4 border-t-4 border-t-pink-400">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="orbitron text-2xl font-bold">00919</h3>
+                        <p class="text-xs text-pink-400">群益台灣精選高息</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500">即時股價</p>
+                        <p class="orbitron text-xl text-white" id="price-00919">--</p>
+                    </div>
+                </div>
+                
+                <div class="bg-black/20 rounded-lg p-3 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持有張數</span>
+                        <input type="number" id="holding-00919" value="0" min="0" onchange="saveData()">
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">持股市價</span>
+                        <span class="text-white" id="market-00919">$0</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">最新除息日 / 配息金額</p>
+                        <p class="text-sm font-bold text-neon-blue" id="ex-00919">載入中...</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-tighter">預計發放日</p>
+                        <p class="text-sm font-bold text-white" id="pay-00919">載入中...</p>
+                    </div>
+                </div>
+
+                <button class="btn-neon w-full mt-auto" onclick="addToCalendar('00919')">
+                    加入行事曆
+                </button>
+            </div>
         </div>
-      </aside>
+
+        <footer class="mt-12 text-center text-gray-600 text-[10px] uppercase tracking-widest">
+            AI Synchronized Data • Real-time Financial Analysis • System Online
+        </footer>
     </div>
 
-    <section class="panel">
-      <div class="toolbar">
-        <button class="btn" onclick="fetchAllPrices()">🔄 手動刷新股價</button>
-        <h2>持有標的</h2>
-        <div class="pill">✓ 可編輯 · ✓ 可儲存 · ✓ 可加入行事曆 · ⏱ <span id="lastUpdate">尚未更新</span></div>
-      </div>
+    <!-- 訊息提示視窗 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 text-white opacity-0 transition-opacity pointer-events-none">
+    </div>
 
-      <div class="grid" id="etfGrid"></div>
-    </section>
-  </div>
+    <script>
+        const apiKey = ""; // 執行環境會自動提供
+        const etfList = ['0056', '00878', '00919'];
+        let etfData = {
+            '0056': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 },
+            '00878': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 },
+            '00919': { price: 0, annualDiv: 0, nextEx: '', nextPay: '', divAmt: 0 }
+        };
 
-  <script>
-    const STORAGE_KEY = 'etf_dividend_tracker_v1';
+        // 格式化數字
+        const fmt = (num) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(num);
 
-    const defaultData = {
-      etfs: {
-        '0056': {
-          name: '元大高股息',
-          price: 0,
-          lots: 0,
-          dividends: [
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-          ]
-        },
-        '00878': {
-          name: '國泰永續高股息',
-          price: 0,
-          lots: 0,
-          dividends: [
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-          ]
-        },
-        '00919': {
-          name: '群益台灣精選高息',
-          price: 0,
-          lots: 0,
-          dividends: [
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-            { amount: 0, exDate: '', payDate: '' },
-          ]
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
         }
-      }
-    };
 
-    const state = loadState();
-    const grid = document.getElementById('etfGrid');
-
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return structuredClone(defaultData);
-        const parsed = JSON.parse(raw);
-        return mergeDefaults(parsed, defaultData);
-      } catch (e) {
-        return structuredClone(defaultData);
-      }
-    }
-
-    function mergeDefaults(target, defaults) {
-      const out = structuredClone(defaults);
-      if (target && target.etfs) {
-        for (const ticker of Object.keys(defaults.etfs)) {
-          const t = target.etfs[ticker] || {};
-          out.etfs[ticker].name = t.name ?? out.etfs[ticker].name;
-          out.etfs[ticker].price = Number(t.price ?? out.etfs[ticker].price) || 0;
-          out.etfs[ticker].lots = Number(t.lots ?? out.etfs[ticker].lots) || 0;
-          if (Array.isArray(t.dividends) && t.dividends.length) {
-            out.etfs[ticker].dividends = out.etfs[ticker].dividends.map((d, i) => ({
-              amount: Number(t.dividends[i]?.amount ?? d.amount) || 0,
-              exDate: t.dividends[i]?.exDate ?? d.exDate,
-              payDate: t.dividends[i]?.payDate ?? d.payDate,
-            }));
-          }
+        async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error('API request failed');
+                return await response.json();
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithRetry(url, options, retries - 1, delay * 2);
+                }
+                throw err;
+            }
         }
-      }
-      return out;
-    }
 
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
+        async function getEtfInfo() {
+            const systemPrompt = "你是一個專業的台灣股市數據分析師。請搜尋並回傳 0056, 00878, 00919 的最新股價、最近一次除息日、最近一次配息發放日、以及該次配息金額。另外，請找出這三支 ETF 最近 4 次已宣告或已配息的金額。";
+            const userQuery = `
+                請搜尋並以 JSON 格式回傳以下資訊：
+                {
+                  "0056": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 },
+                  "00878": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 },
+                  "00919": { "price": 當前股價, "last_4_divs": [金額1, 金額2, 金額3, 金額4], "next_ex_date": "YYYY/MM/DD", "next_pay_date": "YYYY/MM/DD", "current_div": 金額 }
+                }
+                若還沒公布下次日期，請填寫最近一次已知的。
+            `;
 
-    function money(n) {
-      const num = Number(n) || 0;
-      return 'NT$ ' + Math.round(num).toLocaleString('zh-TW');
-    }
+            try {
+                const result = await fetchWithRetry(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: userQuery }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            tools: [{ "google_search": {} }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    }
+                );
 
-    function money2(n) {
-      const num = Number(n) || 0;
-      return 'NT$ ' + num.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+                const data = JSON.parse(result.candidates[0].content.parts[0].text);
+                
+                etfList.forEach(code => {
+                    const item = data[code];
+                    if (item) {
+                        etfData[code].price = item.price;
+                        etfData[code].divAmt = item.current_div;
+                        etfData[code].nextEx = item.next_ex_date;
+                        etfData[code].nextPay = item.next_pay_date;
+                        // 計算年配息 (最近四次總和)
+                        etfData[code].annualDiv = item.last_4_divs.reduce((a, b) => a + b, 0);
+                    }
+                });
 
-    function num(v) {
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    function sharesFromLots(lots) {
-      return Math.max(0, num(lots)) * 1000;
-    }
-
-    function annualDividendPerETF(etf) {
-      return (etf.dividends || []).reduce((sum, d) => sum + num(d.amount), 0) * sharesFromLots(etf.lots);
-    }
-
-    function marketValuePerETF(etf) {
-      return num(etf.price) * sharesFromLots(etf.lots);
-    }
-
-    function render() {
-      grid.innerHTML = '';
-      const tickers = Object.keys(state.etfs);
-
-      tickers.forEach((ticker) => {
-        const etf = state.etfs[ticker];
-        const annual = annualDividendPerETF(etf);
-        const value = marketValuePerETF(etf);
-        const shares = sharesFromLots(etf.lots);
-        const yieldPct = value > 0 ? (annual / value) * 100 : 0;
-
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="ticker">
-            <div>
-              <h3>${ticker}</h3>
-              <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">${etf.name}</div>
-            </div>
-            <span class="tag">持有 ${shares.toLocaleString('zh-TW')} 股</span>
-          </div>
-
-          <div class="meta">
-            <div class="field">
-              <label>持有張數</label>
-              <input type="number" step="0.001" min="0" value="${etf.lots}" data-action="lots" data-ticker="${ticker}">
-            </div>
-            <div class="field">
-              <label>目前市價（每股）</label>
-              <input type="number" step="0.01" min="0" value="${etf.price}" data-action="price" data-ticker="${ticker}">
-            </div>
-          </div>
-
-          <div class="calc">
-            <div class="box">
-              <div class="k">預估市值</div>
-              <div class="v">${money(value)}</div>
-            </div>
-            <div class="box">
-              <div class="k">預估年股息</div>
-              <div class="v">${money(annual)}</div>
-            </div>
-            <div class="box">
-              <div class="k">年化殖利率</div>
-              <div class="v">${yieldPct.toFixed(2)}%</div>
-            </div>
-            <div class="box">
-              <div class="k">備註</div>
-              <div class="v" style="font-size: 14px; font-weight: 700; color: rgba(234,242,255,0.82);">最近四次加總估算</div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-          <div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
-            <strong>最近四次配息紀錄</strong>
-            <button class="btn small secondary" data-action="add-row" data-ticker="${ticker}">＋ 新增一列</button>
-          </div>
-          <div class="history" data-history="${ticker}">
-            ${etf.dividends.map((d, idx) => historyRow(ticker, idx, d)).join('')}
-          </div>
-
-          <div class="footer-actions">
-            <button class="btn" data-action="save-calendar" data-ticker="${ticker}">加入行事曆</button>
-            <button class="btn secondary" data-action="reset-rows" data-ticker="${ticker}">重置四筆紀錄</button>
-          </div>
-          <div class="mini">行事曆按鈕會產生 .ics 事件檔：除息日與配息日各一個。手機可直接下載匯入。</div>
-        `;
-        grid.appendChild(card);
-      });
-
-      updateTotals();
-      wireInputs();
-    }
-
-    function historyRow(ticker, idx, d) {
-      return `
-        <div class="history-row">
-          <input type="number" step="0.01" min="0" placeholder="配息金額" value="${d.amount}" data-action="dividend-amount" data-ticker="${ticker}" data-index="${idx}">
-          <input type="date" value="${d.exDate}" data-action="ex-date" data-ticker="${ticker}" data-index="${idx}">
-          <input type="date" value="${d.payDate}" data-action="pay-date" data-ticker="${ticker}" data-index="${idx}">
-          <button class="btn small secondary" data-action="remove-row" data-ticker="${ticker}" data-index="${idx}">刪除</button>
-        </div>
-      `;
-    }
-
-    function updateTotals() {
-      const allAnnual = Object.values(state.etfs).reduce((sum, etf) => sum + annualDividendPerETF(etf), 0);
-      const allMarket = Object.values(state.etfs).reduce((sum, etf) => sum + marketValuePerETF(etf), 0);
-      const yieldPct = allMarket > 0 ? (allAnnual / allMarket) * 100 : 0;
-      document.getElementById('totalMarketValue').textContent = money(allMarket);
-      document.getElementById('totalAnnualDividend').textContent = money(allAnnual);
-      document.getElementById('yieldRate').textContent = yieldPct.toFixed(2) + '%';
-    }
-
-    function wireInputs() {
-      grid.querySelectorAll('input[data-action]').forEach((input) => {
-        input.addEventListener('input', onInput);
-        input.addEventListener('change', onInput);
-      });
-
-      grid.querySelectorAll('button[data-action]').forEach((btn) => {
-        btn.addEventListener('click', onClick);
-      });
-    }
-
-    function onInput(e) {
-      const el = e.currentTarget;
-      const ticker = el.dataset.ticker;
-      const action = el.dataset.action;
-      const etf = state.etfs[ticker];
-      const idx = Number(el.dataset.index);
-
-      if (!etf) return;
-
-      if (action === 'lots') etf.lots = num(el.value);
-      if (action === 'price') etf.price = num(el.value);
-      if (action === 'dividend-amount') etf.dividends[idx].amount = num(el.value);
-      if (action === 'ex-date') etf.dividends[idx].exDate = el.value;
-      if (action === 'pay-date') etf.dividends[idx].payDate = el.value;
-
-      saveState();
-      render();
-    }
-
-    function onClick(e) {
-      const btn = e.currentTarget;
-      const ticker = btn.dataset.ticker;
-      const action = btn.dataset.action;
-      const etf = state.etfs[ticker];
-      if (!etf) return;
-
-      if (action === 'add-row') {
-        etf.dividends.unshift({ amount: 0, exDate: '', payDate: '' });
-        etf.dividends = etf.dividends.slice(0, 4);
-      }
-
-      if (action === 'remove-row') {
-        const idx = Number(btn.dataset.index);
-        etf.dividends.splice(idx, 1);
-        while (etf.dividends.length < 4) etf.dividends.push({ amount: 0, exDate: '', payDate: '' });
-      }
-
-      if (action === 'reset-rows') {
-        etf.dividends = [
-          { amount: 0, exDate: '', payDate: '' },
-          { amount: 0, exDate: '', payDate: '' },
-          { amount: 0, exDate: '', payDate: '' },
-          { amount: 0, exDate: '', payDate: '' },
-        ];
-      }
-
-      if (action === 'save-calendar') {
-        downloadICS(ticker, etf);
-      }
-
-      saveState();
-      render();
-    }
-
-    function formatICSDate(dateStr) {
-      if (!dateStr) return '';
-      return dateStr.replace(/-/g, '') + 'T090000';
-    }
-
-    function uid(prefix, dateStr) {
-      return `${prefix}-${dateStr || 'nodate'}-${Date.now()}@etf-tracker`;
-    }
-
-    function buildICS(ticker, etf) {
-      const now = new Date();
-      const stamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-      const events = [];
-
-      etf.dividends.forEach((d, i) => {
-        if (d.exDate) {
-          events.push([
-            'BEGIN:VEVENT',
-            `UID:${uid(`${ticker}-ex-${i}`, d.exDate)}`,
-            `DTSTAMP:${stamp}`,
-            `SUMMARY:${ticker} 除息日`,
-            `DESCRIPTION:${ticker} ${etf.name} 除息日`,
-            `DTSTART:${formatICSDate(d.exDate)}`,
-            'END:VEVENT'
-          ].join('\r\n'));
+                updateUI();
+            } catch (error) {
+                console.error(error);
+                showToast("數據同步失敗，請稍後再試");
+            }
         }
-        if (d.payDate) {
-          events.push([
-            'BEGIN:VEVENT',
-            `UID:${uid(`${ticker}-pay-${i}`, d.payDate)}`,
-            `DTSTAMP:${stamp}`,
-            `SUMMARY:${ticker} 配息入帳`,
-            `DESCRIPTION:${ticker} ${etf.name} 配息日`,
-            `DTSTART:${formatICSDate(d.payDate)}`,
-            'END:VEVENT'
-          ].join('\r\n'));
+
+        function saveData() {
+            const holdings = {};
+            etfList.forEach(code => {
+                holdings[code] = document.getElementById(`holding-${code}`).value || 0;
+            });
+            localStorage.setItem('etf_holdings', JSON.stringify(holdings));
+            updateUI();
         }
-      });
 
-      return [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//ETF Dividend Tracker//TW//EN',
-        'CALSCALE:GREGORIAN',
-        ...events,
-        'END:VCALENDAR'
-      ].join('\r\n');
-    }
-
-    // ===== 自動抓配息（簡化示意版）=====
-    async function fetchDividends(ticker){
-      try{
-        // ⚠️ 示意API（實務需換成正式資料源）
-        const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${ticker}`;
-        const res = await fetch(url);
-        const json = await res.json();
-        const data = (json.data || []).slice(-4).reverse();
-        if(!data.length) return;
-
-        state.etfs[ticker].dividends = data.map(d => ({
-          amount: d.CashDividend || 0,
-          exDate: d.ExDividendTradingDate || '',
-          payDate: d.DividendPaymentDate || ''
-        }));
-
-        saveState();
-        render();
-      }catch(e){
-        console.warn('fetch dividend failed', ticker);
-      }
-    }
-
-    function fetchAllDividends(){
-      Object.keys(state.etfs).forEach(t => fetchDividends(t));
-    }
-
-    function downloadICS(ticker, etf) {
-      const ics = buildICS(ticker, etf);
-      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${ticker}-dividend-calendar.ics`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    render();
-  
-    // ===== 即時股價抓取（TWSE API）=====
-    async function fetchPrice(ticker) {
-      try {
-        const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${ticker}.tw`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const info = data.msgArray?.[0];
-        if (!info) return;
-
-        const price = parseFloat(info.z || info.y || info.o);
-        if (!isNaN(price)) {
-          state.etfs[ticker].price = price;
-          saveState();
-          render();
+        function loadData() {
+            const saved = localStorage.getItem('etf_holdings');
+            if (saved) {
+                const holdings = JSON.parse(saved);
+                etfList.forEach(code => {
+                    document.getElementById(`holding-${code}`).value = holdings[code] || 0;
+                });
+            }
         }
-      } catch (e) {
-        console.warn('fetch price failed', ticker);
-      }
-    }
 
-    async function updateTimestamp(){
-      const now = new Date();
-      const t = now.toLocaleTimeString('zh-TW');
-      const el = document.getElementById('lastUpdate');
-      if(el) el.textContent = `更新於 ${t}`;
-    }
+        function updateUI() {
+            let totalAnnual = 0;
+            let totalValue = 0;
 
-    async function fetchAllPrices() {
-      console.log('手動刷新股價');
-      const tickers = Object.keys(state.etfs);
-      for (const t of tickers) {
-        await fetchPrice(t);
-      }
-      updateTimestamp();
-      }
-    }
+            etfList.forEach(code => {
+                const d = etfData[code];
+                const holding = parseFloat(document.getElementById(`holding-${code}`).value) || 0;
+                const marketVal = holding * 1000 * d.price;
+                const etfAnnual = holding * 1000 * d.annualDiv;
 
-    // 每60秒更新一次
-    setInterval(fetchAllPrices, 60000);
+                totalAnnual += etfAnnual;
+                totalValue += marketVal;
 
-    // 初始載入時抓一次
-    fetchAllPrices();
+                document.getElementById(`price-${code}`).textContent = `$${d.price}`;
+                document.getElementById(`market-${code}`).textContent = `$${fmt(marketVal)}`;
+                document.getElementById(`ex-${code}`).textContent = `${d.nextEx} / $${d.divAmt}`;
+                document.getElementById(`pay-${code}`).textContent = d.nextPay || '--';
+            });
 
-  </script>
+            document.getElementById('total-dividend').textContent = fmt(totalAnnual);
+            document.getElementById('monthly-dividend').textContent = `$${fmt(totalAnnual / 12)}`;
+            document.getElementById('total-market-value').textContent = `$${fmt(totalValue)}`;
+        }
+
+        function addToCalendar(code) {
+            const d = etfData[code];
+            if (!d.nextEx || d.nextEx === '載入中...') {
+                showToast("日期資訊尚在同步中");
+                return;
+            }
+
+            const cleanDate = d.nextEx.replace(/\//g, '');
+            const title = encodeURIComponent(`${code} 除息日 - 每股配發 ${d.divAmt} 元`);
+            const details = encodeURIComponent(`預計發放日: ${d.nextPay}`);
+            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${cleanDate}/${cleanDate}&details=${details}&sf=true&output=xml`;
+            
+            window.open(url, '_blank');
+        }
+
+        window.onload = () => {
+            loadData();
+            getEtfInfo();
+            // 每 10 分鐘自動重新抓取
+            setInterval(getEtfInfo, 600000);
+        };
+    </script>
 </body>
 </html>
+
+```
