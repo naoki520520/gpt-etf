@@ -431,6 +431,7 @@
 
     <section class="panel">
       <div class="toolbar">
+        <button class="btn" onclick="fetchAllPrices()">🔄 手動刷新股價</button>
         <h2>持有標的</h2>
         <div class="pill">✓ 可編輯 · ✓ 可儲存 · ✓ 可加入行事曆</div>
       </div>
@@ -789,6 +790,7 @@
     }
 
     async function fetchAllPrices() {
+      console.log('手動刷新股價');
       const tickers = Object.keys(state.etfs);
       for (const t of tickers) {
         await fetchPrice(t);
